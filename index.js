@@ -482,7 +482,7 @@ app.post('/login', async (req, res) => {
           }
 
           // 마지막 로그인 시간 업데이트
-          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = 'online' WHERE email = ?';
+          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
           db.query(updateQuery, [email], (updateError) => {
             if (updateError) {
               console.error('마지막 로그인 시간 업데이트 실패:', updateError);
@@ -550,6 +550,27 @@ app.post('/logout', async (req, res) => {
     console.error('Redis에서 로그아웃 처리 실패:', err);
     return res.status(500).json({ message: '로그아웃 실패' });
   }
+});
+
+// get-school-id 엔드포인트
+app.post('/get-school-id', (req, res) => {
+  const { userEmail } = req.body;
+
+  // 쿼리 실행
+  const query = 'SELECT school_id FROM Users WHERE email = ?';
+  db.query(query, [userEmail], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error', error: err });
+    }
+
+    if (results.length > 0) {
+      // 이메일에 해당하는 학교 이름이 존재하면 반환
+      res.status(200).json({ school_id: results[0].school_id });
+    } else {
+      // 해당하는 사용자 없음
+      res.status(404).json({ message: 'User not found' });
+    }
+  });
 });
 
 // get-school-name 엔드포인트
