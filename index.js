@@ -289,7 +289,7 @@ app.get('/search-schools', (req, res) => {
   }
 
   // SQL LIKE 연산자를 사용해 검색
-  const sql = `SELECT school_name FROM School WHERE school_name LIKE CONCAT('%', ?, '%')`;
+  const sql = `SELECT school_name, school_address FROM School WHERE school_name LIKE CONCAT('%', ?, '%')`;
   const searchValue = `${query}`;
 
   db.query(sql, [searchValue], (err, results) => {
