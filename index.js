@@ -1479,7 +1479,7 @@ app.post('/accept-friend-request', (req, res) => {
 
     // 2. friendship_id를 통해 상대방 user_id 가져오기
     const getUserIdQuery = `
-      SELECT user_id FROM Friends
+      SELECT friend_id FROM Friends
       WHERE friendship_id = ?
     `;
 
