@@ -12,7 +12,7 @@ data.fillna('', inplace=True)  # NaN 값 처리
 connection = pymysql.connect(
     host='0.0.0.0',  # MySQL 서버 주소
     user='checkjin_2023874',  # MySQL 사용자 이름
-    password='checkjin_2023874~~',  # MySQL 비밀번호
+    password='checkjin_2023874',  # MySQL 비밀번호
     database='checkjin_2023874',  # 사용할 데이터베이스 이름
     charset='utf8mb4'
 )
