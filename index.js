@@ -277,6 +277,19 @@ function getCurrentMonth() {
     return { month, year };
 }
 
+app.post('/update-account-status', (req, res) => {
+  const { user_id, account_status } = req.body;
+
+  // 데이터베이스에서 사용자 상태 업데이트
+  const query = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
+  db.query(query, [account_status, user_id], (err, result) => {
+    if (err) {
+      console.error('Error updating account status:', err);
+      return res.status(500).send('Error updating account status');
+    }
+    res.status(200).send('Account status updated successfully');
+  });
+});
 
 
 // 학교 검색 API
