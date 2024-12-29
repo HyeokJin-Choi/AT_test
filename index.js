@@ -1519,11 +1519,11 @@ app.post('/accept-friend-request', (req, res) => {
           CALL CreateNotification(?, '친구 요청 수락', ?, 'friend_request')
         `;
 
-        // db.query(notificationQuery, [userId, notificationMessage], (err, notificationResult) => {
-        //   if (err) {
-        //     console.error('Error creating notification:', err);
-        //     return res.status(500).send({ message: '알림 생성 중 오류가 발생했습니다.' });
-        //   }
+        db.query(notificationQuery, [userId, notificationMessage], (err, notificationResult) => {
+          if (err) {
+            console.error('Error creating notification:', err);
+            return res.status(500).send({ message: '알림 생성 중 오류가 발생했습니다.' });
+          }
 
           // 5. 응답 전송
           res.status(200).send({ message: '친구 요청이 성공적으로 수락되었습니다.' });
