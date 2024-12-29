@@ -369,7 +369,7 @@ app.post('/signup', (req, res) => {
             const school_id = result[0].school_id;
 
             // Users 테이블에 데이터 삽입 (해시된 비밀번호 사용)
-            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'online', ?)`;
+            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'offline', ?)`;
             db.query(query, [email, hashedPassword, nickname, school_name, school_id], (err, result) => {
               if (err) {
                 db.rollback();
@@ -482,7 +482,7 @@ app.post('/login', async (req, res) => {
           }
 
           // 마지막 로그인 시간 업데이트
-          const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = 'online' WHERE email = ?';
           db.query(updateQuery, [email], (updateError) => {
             if (updateError) {
               console.error('마지막 로그인 시간 업데이트 실패:', updateError);
