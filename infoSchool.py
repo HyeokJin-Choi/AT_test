@@ -4,7 +4,7 @@ import pandas as pd
 import pymysql
 
 # 1. CSV 파일 읽기
-file_path = '학교기본정보_2024년11월30일기준.csv'
+file_path = 'school_info_2024_11_30.csv'
 data = pd.read_csv(file_path, usecols=['학교명', '시도명', '도로명주소'])
 data.fillna('', inplace=True)  # NaN 값 처리
 
