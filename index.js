@@ -1648,7 +1648,8 @@ app.get('/friends/:userId', (req, res) => {
         WHEN f.user_id = ? THEN f.friend_id
         ELSE f.user_id
       END AS friend_id,
-      u.nickname
+      u.nickname,
+      u.account_status
     FROM Friends f
     JOIN Users u ON u.user_id = (
       CASE
