@@ -356,7 +356,7 @@ app.post('/signup', (req, res) => {
             const school_id = result[0].school_id;
 
             // Users 테이블에 데이터 삽입 (해시된 비밀번호 사용)
-            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'active', ?)`;
+            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'online', ?)`;
             db.query(query, [email, hashedPassword, nickname, school_name, school_id], (err, result) => {
               if (err) {
                 db.rollback();
