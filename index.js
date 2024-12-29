@@ -1477,11 +1477,14 @@ app.post('/accept-friend-request', (req, res) => {
       return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
     }
 
-    // 2. friendship_id를 통해 상대방 user_id 가져오기
-    const getUserIdQuery = `
-      SELECT user_id FROM Friends
-      WHERE friendship_id = ?
-    `;
+    // 2. friendship_id를 통해 자신의 user_id 가져오기(상대에게 전송하기 위함으로 friend_id가 자신의 user_id인 이유는 자신이 요청을 받았기 때문)
+    const getUserIdQuery = `SELECT friend_id FROM Friends WHERE friendship_id = ?`;
+
+    // // 2. friendship_id를 통해 상대방 user_id 가져오기
+    // const getUserIdQuery = `
+    //   SELECT user_id FROM Friends
+    //   WHERE friendship_id = ?
+    // `;
 
     db.query(getUserIdQuery, [friendshipId], (err, userResult) => {
       if (err) {
@@ -1493,7 +1496,7 @@ app.post('/accept-friend-request', (req, res) => {
         return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
       }
 
-      const userId = userResult[0].user_id;
+      const userId = userResult[0].friend_id;
 
       // 3. user_id를 통해 nickname 가져오기
       const getNicknameQuery = `
@@ -1514,7 +1517,7 @@ app.post('/accept-friend-request', (req, res) => {
         const nickname = nicknameResult[0].nickname;
 
         // 4. 친구 수락 알림 생성 (nickname 포함)
-        const notificationMessage = `${nickname} 님이 친구 요청을 수락했습니다!`;
+        const notificationMessage = `${nickname}님께서 친구 요청을 수락했습니다!`;
         const notificationQuery = `
           CALL CreateNotification(?, '친구 요청 수락', ?, 'friend_request')
         `;
