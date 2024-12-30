@@ -433,23 +433,13 @@ app.post('/login', async (req, res) => {
             }
 
             // 마지막 로그인 시간 업데이트
-            const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+            const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
             db.query(updateQuery, [email], (updateError) => {
               if (updateError) {
                 console.error('마지막 로그인 시간 업데이트 실패:', updateError);
                 return res.status(500).json({ message: '서버 오류' });
               }
             });
-            // 데이터베이스에서 사용자 상태 업데이트
-            const accountQuery = 'UPDATE Users SET account_status = "online" WHERE user_id = ?';
-            db.query(accountQuery, [userId], (err, result) => {
-              if (err) {
-                console.error('Error updating account status:', err);
-                return res.status(500).send('Error updating account status');
-              }
-              res.status(200).send('Account status updated successfully');
-            });
-
             try {
               // Redis 데이터 저장 시
               const status = 'loggedIn';
@@ -498,15 +488,6 @@ app.post('/login', async (req, res) => {
               console.error('마지막 로그인 시간 업데이트 실패:', updateError);
               return res.status(500).json({ message: '서버 오류' });
             }
-          });
-          // 데이터베이스에서 사용자 상태 업데이트
-          const accountQuery = 'UPDATE Users SET account_status = "online" WHERE user_id = ?';
-          db.query(accountQuery, [userId], (err, result) => {
-            if (err) {
-              console.error('Error updating account status:', err);
-              return res.status(500).send('Error updating account status');
-            }
-            res.status(200).send('Account status updated successfully');
           });
 
           try {
