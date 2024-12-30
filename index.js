@@ -566,8 +566,8 @@ app.post('/logout', async (req, res) => {
     }
     res.status(200).send('Account status updated successfully');
   });
-}
-         
+
+    
 // get-school-id 엔드포인트
 app.post('/get-school-id', (req, res) => {
   const { userEmail } = req.body;
