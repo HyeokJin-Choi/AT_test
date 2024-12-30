@@ -1,0 +1,26 @@
+python3 -m venv AT_test // AT_test라는 이름으로 python 가상머신 설치
+source AT_test/bin/activate // AT_test의 가상머신 실행
+cd AT_test // AT_test디렉터리로 이동
+pip install pandas // pandas 설치(infoSchool.py를 실행시키기 위함.)
+pip install pymysql // pymysql 설치 (infoSchool.py를 실행시키기 위함.)
+python infoSchool.py // infoSchool.py를 실행
+deactivate // AT_test 가상머신 종료.
+---------------------------------------------------------------------
+<file의 수정후 서버에 index.js를 설치하기 위해 해야할 것>
+rm -rf filename // 파일 삭제
+git clone 주소 // git clone하여 파일 설치
+---------------------------------------------------------------------
+<서버에서 mySQL 사용하는 방법>
+mysql -u checkjin_2023874 -p
+Enter Psswd: checkjin_2023874
+mysql> use checkjin_2023874
+---------------------------------------------------------------------
+<서버의 자동 재시작을 위한 방법>
+npm install pm2
+ls
+cd AT_test
+npx pm2 start index.js --name at (프로세스 관리 도구인 PM2를 사용하여 서버가 종료되더라도 자동으로 재시작되게 설정, at는 내가 설정하는 name) 
+npx pm2 list  (PM2에 실행 중인 프로세스 목록을 확인)
+npx pm2 stop 0 (숫자는 id이며 프로세스 ID(PID)로 종료하는 방법) 
+npx pm2 restart at (서버 재시작, at는 내가 설정했던 name) 
+npx pm2 delete at (서버 완전 삭제 (프로세스 목록에서 제거), at는 내가 설정했던 name) 
