@@ -420,7 +420,7 @@ app.post('/login', async (req, res) => {
             }
 
             // 마지막 로그인 시간 업데이트
-            const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+            const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
             db.query(updateQuery, [email], (updateError) => {
               if (updateError) {
                 console.error('마지막 로그인 시간 업데이트 실패:', updateError);
@@ -470,7 +470,7 @@ app.post('/login', async (req, res) => {
           }
 
           // 마지막 로그인 시간 업데이트
-          const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
           db.query(updateQuery, [email], (updateError) => {
             if (updateError) {
               console.error('마지막 로그인 시간 업데이트 실패:', updateError);
@@ -526,6 +526,15 @@ app.post('/logout', async (req, res) => {
   }
 
   try {
+    // 마지막 로그인 시간 업데이트
+    const updateQuery = 'UPDATE Users SET account_status = "offline" WHERE user_id = ?';
+    db.query(updateQuery, [userId], (updateError) => {
+      if (updateError) {
+        console.error('마지막 로그인 시간 업데이트 실패:', updateError);
+        return res.status(500).json({ message: '서버 오류' });
+      }
+    });
+
     // Redis에서 사용자 로그인 상태 제거
     const result = await redisClient.del(userId.toString());
     if (result === 1) {
