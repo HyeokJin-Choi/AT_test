@@ -464,6 +464,7 @@ app.post('/login', async (req, res) => {
             return res.status(200).json({
               user_id: user.user_id,
               nickname: user.nickname,
+              password: user.password,
               message: '로그인 성공',
             });
           } else {
@@ -513,6 +514,7 @@ app.post('/login', async (req, res) => {
           return res.status(200).json({
             user_id: user.user_id,
             nickname: user.nickname,
+            password: user.password,
             message: '로그인 성공',
           });
         } else {
@@ -1558,6 +1560,43 @@ app.post('/reject-friend-request', (req, res) => {
     }
 
     res.status(200).json({ message: '친구 요청이 거절되었습니다.' });
+  });
+});
+
+app.get('/friends/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  const query = `
+    SELECT
+      CASE
+        WHEN f.user_id = ? THEN f.friend_id
+        ELSE f.user_id
+      END AS friend_id,
+      u.nickname,
+      u.account_status
+    FROM Friends f
+    JOIN Users u ON u.user_id = (
+      CASE
+        WHEN f.user_id = ? THEN f.friend_id
+        ELSE f.user_id
+      END
+    )
+    WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
+  `;
+
+  db.query(query, [userId, userId, userId, userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching friends:', err);
+      return res.status(500).json({ message: '친구 목록을 가져오는 중 오류가 발생했습니다.' });
+    }
+
+    // 결과가 비어 있을 경우 처리
+    if (!results || results.length === 0) {
+      return res.status(404).json({ message: '친구 목록이 비어 있습니다.' });
+    }
+
+    // 정상적인 결과 반환
+    res.status(200).json(results);
   });
 });
 
