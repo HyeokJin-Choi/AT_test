@@ -432,6 +432,15 @@ app.post('/login', async (req, res) => {
               return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
             }
 
+            // 마지막 로그인 시간 업데이트
+            const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+            db.query(updateQuery, [email], (updateError) => {
+              if (updateError) {
+                console.error('마지막 로그인 시간 업데이트 실패:', updateError);
+                return res.status(500).json({ message: '서버 오류' });
+              }
+            });
+
             try {
               // Redis 데이터 저장 시
               const status = 'loggedIn';
@@ -474,7 +483,7 @@ app.post('/login', async (req, res) => {
           }
 
           // 마지막 로그인 시간 업데이트
-          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
+          const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
           db.query(updateQuery, [email], (updateError) => {
             if (updateError) {
               console.error('마지막 로그인 시간 업데이트 실패:', updateError);
@@ -520,7 +529,6 @@ app.post('/login', async (req, res) => {
     }
   });
 });
-
 
 // 로그아웃 API
 app.post('/logout', async (req, res) => {
