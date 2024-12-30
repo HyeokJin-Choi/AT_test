@@ -441,8 +441,8 @@ app.post('/login', async (req, res) => {
               }
             });
             // 데이터베이스에서 사용자 상태 업데이트
-            const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
-            db.query(accountQuery, ["online", userId], (err, result) => {
+            const accountQuery = 'UPDATE Users SET account_status = "online" WHERE user_id = ?';
+            db.query(accountQuery, [userId], (err, result) => {
               if (err) {
                 console.error('Error updating account status:', err);
                 return res.status(500).send('Error updating account status');
@@ -500,8 +500,8 @@ app.post('/login', async (req, res) => {
             }
           });
           // 데이터베이스에서 사용자 상태 업데이트
-          const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
-          db.query(accountQuery, ["online", userId], (err, result) => {
+          const accountQuery = 'UPDATE Users SET account_status = "online" WHERE user_id = ?';
+          db.query(accountQuery, [userId], (err, result) => {
             if (err) {
               console.error('Error updating account status:', err);
               return res.status(500).send('Error updating account status');
@@ -558,8 +558,8 @@ app.post('/logout', async (req, res) => {
   }
 
   // 데이터베이스에서 사용자 상태 업데이트
-  const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
-  db.query(accountQuery, ["offline", userId], (err, result) => {
+  const accountQuery = 'UPDATE Users SET account_status = "offline" WHERE user_id = ?';
+  db.query(accountQuery, [userId], (err, result) => {
     if (err) {
       console.error('Error updating account status:', err);
       return res.status(500).send('Error updating account status');
