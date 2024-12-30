@@ -440,6 +440,15 @@ app.post('/login', async (req, res) => {
                 return res.status(500).json({ message: '서버 오류' });
               }
             });
+            // 데이터베이스에서 사용자 상태 업데이트
+            const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
+            db.query(accountQuery, ['online', userId], (err, result) => {
+              if (err) {
+                console.error('Error updating account status:', err);
+                return res.status(500).send('Error updating account status');
+              }
+              res.status(200).send('Account status updated successfully');
+            });
 
             try {
               // Redis 데이터 저장 시
@@ -490,6 +499,15 @@ app.post('/login', async (req, res) => {
               return res.status(500).json({ message: '서버 오류' });
             }
           });
+          // 데이터베이스에서 사용자 상태 업데이트
+          const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
+          db.query(accountQuery, ['online', userId], (err, result) => {
+            if (err) {
+              console.error('Error updating account status:', err);
+              return res.status(500).send('Error updating account status');
+            }
+            res.status(200).send('Account status updated successfully');
+          });
 
           try {
             // Redis 데이터 저장 시
@@ -530,6 +548,7 @@ app.post('/login', async (req, res) => {
   });
 });
 
+
 // 로그아웃 API
 app.post('/logout', async (req, res) => {
   const { userId } = req.body;
@@ -538,22 +557,17 @@ app.post('/logout', async (req, res) => {
     return res.status(400).json({ message: '사용자 ID가 필요합니다.' });
   }
 
-  try {
-    // Redis에서 사용자 로그인 상태 제거
-    const result = await redisClient.del(userId.toString());
-    if (result === 1) {
-      console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
-      return res.status(200).json({ message: '로그아웃 성공' });
-    } else {
-      console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
-      return res.status(404).json({ message: '사용자가 로그인되어 있지 않습니다.' });
+  // 데이터베이스에서 사용자 상태 업데이트
+  const accountQuery = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
+  db.query(accountQuery, ['offline', userId], (err, result) => {
+    if (err) {
+      console.error('Error updating account status:', err);
+      return res.status(500).send('Error updating account status');
     }
-  } catch (err) {
-    console.error('Redis에서 로그아웃 처리 실패:', err);
-    return res.status(500).json({ message: '로그아웃 실패' });
-  }
-});
-
+    res.status(200).send('Account status updated successfully');
+  });
+}
+         
 // get-school-id 엔드포인트
 app.post('/get-school-id', (req, res) => {
   const { userEmail } = req.body;
