@@ -19,4 +19,13 @@ connection = pymysql.connect(
 
 # 3. 데이터 삽입
 try:
-    with connection.cur
+    with connection.cursor() as cursor:
+        # INSERT 쿼리 준비
+        insert_query = "INSERT INTO School (school_name, school_local, school_address) VALUES (%s, %s, %s)"
+        # 데이터 삽입
+        for _, row in data.iterrows():
+            cursor.execute(insert_query, (row['학교명'], row['시도명'], row['소재지도로명주소']))
+    connection.commit()
+    print("데이터 삽입 완료!")
+finally:
+    connection.close()
