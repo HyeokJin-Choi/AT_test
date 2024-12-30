@@ -277,19 +277,6 @@ function getCurrentMonth() {
     return { month, year };
 }
 
-app.post('/update-account-status', (req, res) => {
-  const { user_id, account_status } = req.body;
-
-  // 데이터베이스에서 사용자 상태 업데이트
-  const query = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
-  db.query(query, [account_status, user_id], (err, result) => {
-    if (err) {
-      console.error('Error updating account status:', err);
-      return res.status(500).send('Error updating account status');
-    }
-    res.status(200).send('Account status updated successfully');
-  });
-});
 
 
 // 학교 검색 API
@@ -369,7 +356,7 @@ app.post('/signup', (req, res) => {
             const school_id = result[0].school_id;
 
             // Users 테이블에 데이터 삽입 (해시된 비밀번호 사용)
-            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'offline', ?)`;
+            const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'active', ?)`;
             db.query(query, [email, hashedPassword, nickname, school_name, school_id], (err, result) => {
               if (err) {
                 db.rollback();
@@ -538,36 +525,20 @@ app.post('/logout', async (req, res) => {
     return res.status(400).json({ message: '사용자 ID가 필요합니다.' });
   }
 
-  // 데이터베이스에서 사용자 상태 업데이트
-  const accountQuery = 'UPDATE Users SET account_status = "offline" WHERE user_id = ?';
-  db.query(accountQuery, [userId], (err, result) => {
-    if (err) {
-      console.error('Error updating account status:', err);
-      return res.status(500).send('Error updating account status');
-    }
-    res.status(200).send('Account status updated successfully');
-  });
-
-    
-// get-school-id 엔드포인트
-app.post('/get-school-id', (req, res) => {
-  const { userEmail } = req.body;
-
-  // 쿼리 실행
-  const query = 'SELECT school_id FROM Users WHERE email = ?';
-  db.query(query, [userEmail], (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: 'Database error', error: err });
-    }
-
-    if (results.length > 0) {
-      // 이메일에 해당하는 학교 이름이 존재하면 반환
-      res.status(200).json({ school_id: results[0].school_id });
+  try {
+    // Redis에서 사용자 로그인 상태 제거
+    const result = await redisClient.del(userId.toString());
+    if (result === 1) {
+      console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
+      return res.status(200).json({ message: '로그아웃 성공' });
     } else {
-      // 해당하는 사용자 없음
-      res.status(404).json({ message: 'User not found' });
+      console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
+      return res.status(404).json({ message: '사용자가 로그인되어 있지 않습니다.' });
     }
-  });
+  } catch (err) {
+    console.error('Redis에서 로그아웃 처리 실패:', err);
+    return res.status(500).json({ message: '로그아웃 실패' });
+  }
 });
 
 // get-school-name 엔드포인트
@@ -1398,6 +1369,7 @@ app.post('/send-friend-request', (req, res) => {
         return res.status(400).send({ message: '이미 친구 요청이 존재합니다.' });
       }
 
+      // 기존 요청이 없을 때만 친구 요청 삽입
       const insertQuery = `
         INSERT INTO Friends (user_id, friend_id, status, created_at, updated_at)
         VALUES (?, ?, 'requested', NOW(), NOW())
@@ -1425,7 +1397,6 @@ app.post('/send-friend-request', (req, res) => {
     });
   });
 });
-
 
 // 친구 요청 목록 가져오기
 app.get('/friend-requests/:userId', (req, res) => {
@@ -1556,43 +1527,6 @@ app.post('/reject-friend-request', (req, res) => {
   });
 });
 
-app.get('/friends/:userId', (req, res) => {
-  const { userId } = req.params;
-
-  const query = `
-    SELECT
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END AS friend_id,
-      u.nickname,
-      u.account_status
-    FROM Friends f
-    JOIN Users u ON u.user_id = (
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END
-    )
-    WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
-  `;
-
-  db.query(query, [userId, userId, userId, userId], (err, results) => {
-    if (err) {
-      console.error('Error fetching friends:', err);
-      return res.status(500).json({ message: '친구 목록을 가져오는 중 오류가 발생했습니다.' });
-    }
-
-    // 결과가 비어 있을 경우 처리
-    if (!results || results.length === 0) {
-      return res.status(404).json({ message: '친구 목록이 비어 있습니다.' });
-    }
-
-    // 정상적인 결과 반환
-    res.status(200).json(results);
-  });
-});
-
 // 알림 데이터 가져오기
 app.post('/get-notifications', (req, res) => {
     const { userId } = req.body;
@@ -1667,7 +1601,26 @@ app.post('/mark-notification-read', (req, res) => {
     );
 });
 
+// get-school-id 엔드포인트
+app.post('/get-school-id', (req, res) => {
+  const { userEmail } = req.body;
 
+  // 쿼리 실행
+  const query = 'SELECT school_id FROM Users WHERE email = ?';
+  db.query(query, [userEmail], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error', error: err });
+    }
+
+    if (results.length > 0) {
+      // 이메일에 해당하는 학교 이름이 존재하면 반환
+      res.status(200).json({ school_id: results[0].school_id });
+    } else {
+      // 해당하는 사용자 없음
+      res.status(404).json({ message: 'User not found' });
+    }
+  });
+});
 
 
 // 서버 시작
@@ -1683,8 +1636,7 @@ app.get('/friends/:userId', (req, res) => {
         WHEN f.user_id = ? THEN f.friend_id
         ELSE f.user_id
       END AS friend_id,
-      u.nickname,
-      u.account_status
+      u.nickname
     FROM Friends f
     JOIN Users u ON u.user_id = (
       CASE
