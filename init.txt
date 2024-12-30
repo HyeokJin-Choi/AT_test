@@ -5,6 +5,7 @@ cd AT_test // AT_test디렉터리로 이동
 pip install pandas // pandas 설치(infoSchool.py를 실행시키기 위함.)
 pip install pymysql // pymysql 설치 (infoSchool.py를 실행시키기 위함.)
 python infoSchool.py // infoSchool.py를 실행
+python infoUniv.py // infoUniv.py를 실행
 deactivate // AT_test 가상머신 종료.
 ---------------------------------------------------------------------
 <file의 수정후 서버에 index.js를 설치하기 위해 해야할 것>
