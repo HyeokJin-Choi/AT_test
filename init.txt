@@ -1,3 +1,4 @@
+<학교의 정보를 스크롤하기 위한 파이썬 가상머신 사용방법>
 python3 -m venv AT_test // AT_test라는 이름으로 python 가상머신 설치
 source AT_test/bin/activate // AT_test의 가상머신 실행
 cd AT_test // AT_test디렉터리로 이동
