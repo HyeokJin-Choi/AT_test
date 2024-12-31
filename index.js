@@ -1757,7 +1757,7 @@ app.post('/get-average-study-time', async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT 
-        SUM(TIME_TO_SEC(daily_time)) / COUNT(DISTINCT DATE(start_date)) AS average_time_seconds
+        SUM(TIME_TO_SEC(daily_time)) / COUNT(DISTINCT DATE(record_date)) AS average_time_seconds
        FROM StudyTimeRecords
        WHERE user_id = ?`,
       [userId]
