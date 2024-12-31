@@ -1685,37 +1685,28 @@ app.post('/mark-notification-read', (req, res) => {
 
 // 일별 공부 시간 가져오기 API
 app.post('/get-daily-study-times', async (req, res) => {
-    const { userId, month, year } = req.body;
+    const { userId } = req.body;
 
     // 입력 검증
-    if (!userId || !month || !year) {
-        return res.status(400).json({ error: 'userId, month, and year are required.' });
+    if (!userId) {
+      console.log("user_id  missing."); // 디버깅 메시지
+        return res.status(400).json({ error: 'userId is required.' });
     }
 
-    try {
-        // 데이터베이스 연결
-        const connection = await mysql.createConnection(dbConfig);
-
-        // SQL 쿼리: 특정 유저의 특정 월에 해당하는 공부 시간 가져오기
-        const [rows] = await connection.execute(
-            `SELECT record_date, daily_time 
-             FROM StudyTimeRecords 
-             WHERE user_id = ? AND MONTH(record_date) = ? AND YEAR(record_date) = ?`,
-            [userId, month, year]
-        );
-
-        // 결과 응답
-        res.json({ dailyStudyTimes: rows });
-
-        // 연결 종료
-        await connection.end();
-    } catch (error) {
+    const sql =  `SELECT record_date, daily_time FROM StudyTimeRecords WHERE user_id = ?`;
+    db.query(sql, [userId], (err, results) => {
+      if (err) {
         console.error('Error fetching daily study times:', error);
-        res.status(500).json({ error: 'Failed to fetch daily study times.' });
-    }
+        return res.status(500).json({ error: 'Failed to fetch daily study times.' });
+      }
+  
+      // 결과를 서버 콘솔에 출력
+      console.log('Search daily study times results:', results);
+  
+      // 결과 반환
+      res.json(results);
+    });
 });
-
-
 
 
 // 서버 시작
