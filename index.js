@@ -1754,22 +1754,29 @@ app.get('/friends/:userId', (req, res) => {
 app.post('/get-average-study-time', async (req, res) => {
   const { userId } = req.body;
 
-  try {
-    const [rows] = await db.query(
-      `SELECT 
-        SUM(TIME_TO_SEC(daily_time)) / COUNT(DISTINCT DATE(record_date)) AS average_time_seconds
-       FROM StudyTimeRecords
-       WHERE user_id = ?`,
-      [userId]
-    );
+  // 입력 검증
+  if (!userId) {
+    console.log("userId missing."); // 디버깅 메시지
+    return res.status(400).json({ error: 'userId is required.' });
+  }
 
-    if (rows.length > 0) {
-      res.json({ average_time_seconds: Math.round(rows[0].average_time_seconds) });
+  const sql = `
+    SELECT
+      SUM(TIME_TO_SEC(daily_time)) / COUNT(DISTINCT DATE(record_date)) AS average_time_seconds
+    FROM StudyTimeRecords
+    WHERE user_id = ?`;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching average study time:', err);
+      return res.status(500).json({ error: 'Failed to fetch average study time.' });
+    }
+
+    // 결과 반환
+    if (results.length > 0 && results[0].average_time_seconds !== null) {
+      res.json({ average_time_seconds: Math.round(results[0].average_time_seconds) });
     } else {
       res.status(404).json({ message: 'No records found for the user.' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error.' });
-  }
+  });
 });
