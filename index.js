@@ -1749,3 +1749,27 @@ app.get('/friends/:userId', (req, res) => {
     res.status(200).json(results);
   });
 });
+
+// 평균 공부 시간 가져오기
+app.post('/get-average-study-time', async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        SUM(TIME_TO_SEC(daily_time)) / COUNT(DISTINCT DATE(start_date)) AS average_time_seconds
+       FROM StudyTimeRecords
+       WHERE user_id = ?`,
+      [userId]
+    );
+
+    if (rows.length > 0) {
+      res.json({ average_time_seconds: Math.round(rows[0].average_time_seconds) });
+    } else {
+      res.status(404).json({ message: 'No records found for the user.' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
