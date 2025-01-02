@@ -878,11 +878,11 @@ app.post('/get-user-id', async (req, res) => {
 
 // 타이머 기록을 계산하는 엔드포인트
 app.post('/calculate-time-and-points', (req, res) => {
-    const { input_record_time, user_id } = req.body;
+    const { input_record_time, user_id, start_time, end_time } = req.body;
 
-    if (!input_record_time || !user_id) {
-        return res.status(400).json({ message: 'Input record time and user ID are required' });
-    }
+    if (!input_record_time || !user_id || !start_time || !end_time) {
+            return res.status(400).json({ message: 'Input record time, user ID, start time, and end time are required' });
+        }
 
     // 1. 사용자가 속한 학교 ID 조회
     const schoolIdQuery = `
@@ -919,11 +919,12 @@ app.post('/calculate-time-and-points', (req, res) => {
             const currentSchoolLevel = currentLevelResult[0].school_level;
 
             // 3. 프로시저 호출
-            const query = `CALL CalculateTimeAndPoints_proc(?, ?)`;
-            db.query(query, [input_record_time, user_id], (err, results) => {
-                if (err) {
-                    return res.status(500).json({ message: 'Error calling stored procedure' });
-                }
+            const query = `CALL CalculateTimeAndPoints_proc(?, ?, ?, ?)`;
+                    db.query(query, [user_id, start_time, end_time, input_record_time], (err, results) => {
+                        if (err) {
+                            console.error('Error calling stored procedure:', err);
+                            return res.status(500).json({ message: 'Error calling stored procedure' });
+                        }
 
                 // 4. 프로시저 실행 후 학교 레벨 다시 조회
                 db.query(currentLevelQuery, [schoolId], (err, updatedLevelResult) => {
