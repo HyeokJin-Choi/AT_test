@@ -351,7 +351,7 @@ app.post('/signup', (req, res) => {
   }
 
   if (!isValidNickname(nickname)) {
-    return res.status(400).json({ message: '한글 2~8자, 영문/숫자/특수문자(-,_) 2~14자 사용 가능하며 공백은 사용 불가능합니다.' });
+    return res.status(400).json({ message: '닉네임은 한글 2~8자, 영문/숫자/특수문자(-,_) 2~14자 사용 가능하며 공백은 사용 불가능합니다.' });
   }
 
   if (containsBadWords(nickname)) {
