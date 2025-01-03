@@ -341,7 +341,7 @@ app.post('/signup', (req, res) => {
   }
 
   if (containsBadWords(nickname)) {
-    return res.status(400).json({ message: 'Nickname contains inappropriate words' });
+    return res.status(400).json({ message: '닉네임에 비속어는 사용하실 수 없습니다.' });
   }
 
   bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
@@ -360,7 +360,7 @@ app.post('/signup', (req, res) => {
         }
         if (result.length > 0) {
           db.rollback();
-          return res.status(400).json({ message: 'Email is already taken' });
+          return res.status(400).json({ message: '존재하는 아이디입니다.' });
         }
 
         db.query('SELECT nickname FROM Users WHERE nickname = ?', [nickname], (err, result) => {
@@ -370,7 +370,7 @@ app.post('/signup', (req, res) => {
           }
           if (result.length > 0) {
             db.rollback();
-            return res.status(400).json({ message: 'Nickname is already taken' });
+            return res.status(400).json({ message: '존재하는 닉네임입니다.' });
           }
 
           db.query('SELECT school_id FROM School WHERE school_name = ?', [school_name], (err, result) => {
