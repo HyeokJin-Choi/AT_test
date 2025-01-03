@@ -21,6 +21,16 @@ const db = mysql.createConnection({
     multipleStatements: true // 여기에 추가
 });
 
+const fs = require('fs');
+
+// 비속어 리스트 로드
+const badWords = JSON.parse(fs.readFileSync('/invalid-words.json')).invalidString;
+
+// 비속어 필터링 함수
+function containsBadWords(nickname) {
+  return badWords.some((word) => nickname.includes(word));
+}
+
 // MySQL 연결
 db.connect((err) => {
     if (err) throw err;
@@ -326,6 +336,10 @@ app.post('/signup', (req, res) => {
     return res.status(400).json({ message: 'Email, password, nickname, and school_name are required' });
   }
 
+  if (containsBadWords(nickname)) {
+    return res.status(400).json({ message: 'Nickname contains inappropriate words' });
+  }
+
   bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
     if (err) {
       return res.status(500).json({ message: 'Error hashing password' });
@@ -368,7 +382,6 @@ app.post('/signup', (req, res) => {
 
             const school_id = result[0].school_id;
 
-            // Users 테이블에 데이터 삽입 (해시된 비밀번호 사용)
             const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'offline', ?)`;
             db.query(query, [email, hashedPassword, nickname, school_name, school_id], (err, result) => {
               if (err) {
@@ -378,7 +391,6 @@ app.post('/signup', (req, res) => {
 
               const userId = result.insertId;
 
-              // StudyTimeRecords 테이블 초기화
               db.query(`INSERT INTO StudyTimeRecords (user_id) VALUES (?)`, [userId], (err) => {
                 if (err) {
                   db.rollback();
