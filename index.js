@@ -1292,7 +1292,7 @@ app.post('/get-placed-items', (req, res) => {
   const { userId } = req.body;
 
   const query = `
-    SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority
+    SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority, s.item_width, s.item_height
     FROM Inventory AS i
     INNER JOIN Store AS s ON i.item_id = s.item_id
     WHERE i.user_id = ? AND i.is_placed = 1
