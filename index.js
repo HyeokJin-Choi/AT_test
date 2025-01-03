@@ -34,6 +34,16 @@ function containsBadWords(nickname) {
   return badWords.some((word) => nickname.includes(word));
 }
 
+// 닉네임 검증 함수
+function isValidNickname(nickname) {
+  const koreanRegex = /^[가-힣]{2,8}$/; // 한글 2~8자
+  const englishRegex = /^[a-zA-Z0-9_-]{2,14}$/; // 영문/숫자/특수문자 2~14자
+  const noSpaces = !/\s/.test(nickname); // 공백 체크
+
+  // 한글 또는 영문 규칙 중 하나를 만족해야 함
+  return noSpaces && (koreanRegex.test(nickname) || englishRegex.test(nickname));
+}
+
 
 // MySQL 연결
 db.connect((err) => {
@@ -338,6 +348,10 @@ app.post('/signup', (req, res) => {
 
   if (!email || !password || !nickname || !school_name) {
     return res.status(400).json({ message: 'Email, password, nickname, and school_name are required' });
+  }
+
+  if (!isValidNickname(nickname)) {
+    return res.status(400).json({ message: '한글 2~8자, 영문/숫자/특수문자(-,_) 2~14자 사용 가능하며 공백은 사용 불가능합니다.' });
   }
 
   if (containsBadWords(nickname)) {
