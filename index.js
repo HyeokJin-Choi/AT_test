@@ -22,14 +22,18 @@ const db = mysql.createConnection({
 });
 
 const fs = require('fs');
+const path = require('path');
 
 // 비속어 리스트 로드
-const badWords = JSON.parse(fs.readFileSync('/invalid-words.json')).invalidString;
+const badWords = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'invalid-words.json'))
+).invalidString;
 
 // 비속어 필터링 함수
 function containsBadWords(nickname) {
   return badWords.some((word) => nickname.includes(word));
 }
+
 
 // MySQL 연결
 db.connect((err) => {
