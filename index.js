@@ -657,7 +657,10 @@ app.get('/school-rankings', (req, res) => {
 
   // '지역 대회' 처리
   if (competition === '지역 대회' && local) {
-      const query = 'SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local FROM School WHERE school_local = ? ORDER BY local_ranking ASC';
+      const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
+                    FROM School
+                    WHERE school_local = ? AND total_time > 0
+                    ORDER BY local_ranking ASC;`;
 
     db.query(query, local, (err, results) => {
       if (err) {
@@ -684,6 +687,7 @@ app.get('/school-rankings', (req, res) => {
                              school_local,
                              ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
                            FROM School
+                           WHERE total_time > 0
                          )
                          SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
                          FROM RankedSchools
@@ -706,6 +710,7 @@ app.get('/school-rankings', (req, res) => {
   else if (competition === '랭킹') {
     const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
                    FROM School
+                   WHERE total_time > 0
                    ORDER BY total_ranking ASC;`;
     db.query(query, (err, results) => {
       if (err) {
