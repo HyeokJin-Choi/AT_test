@@ -1780,3 +1780,20 @@ app.get('/friends/:userId', (req, res) => {
     res.status(200).json(results);
   });
 });
+
+app.post('/reset-items-to-bag', async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id is required' });
+  }
+
+  try {
+    const query = 'UPDATE Inventory SET is_placed = 0 WHERE user_id = ?';
+    await db.query(query, [user_id]);
+    res.status(200).json({ message: 'Items reset to bag successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+})
