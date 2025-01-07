@@ -911,6 +911,52 @@ app.post('/get-user-id', async (req, res) => {
         });
 });
 
+
+// 사용자 정보 가져오기
+app.post('/get-user-info', (req, res) => {
+  const { userId } = req.body;
+  console.log('Received userId:', userId);
+
+  const query = `
+      SELECT nickname, school_name
+      FROM Users
+      WHERE user_id = ?;
+  `;
+  db.query(query, [userId], (err, results) => {
+      if (err) {
+          console.error('Error fetching user info:', err);
+          return res.status(500).json({ error: 'Failed to fetch user info' });
+      }
+      console.log('Query result:', results); // 디버깅 로그
+      if (results.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      } else {
+          res.status(200).json({
+              nickname: results[0].nickname,
+              schoolName: results[0].school_name,
+          });
+      }
+  });
+});
+
+// 학교 수정
+app.post('/update-school', (req, res) => {
+  const { userId, newSchoolName } = req.body;
+
+  const updateQuery = `UPDATE Users SET school_name = ? WHERE user_id = ?;`;
+  db.query(updateQuery, [newSchoolName, userId], (err, results) => {
+      if (err) {
+          console.error('Error updating school name:', err);
+          return res.status(500).json({ error: 'Failed to update school name' });
+      }
+      if (results.affectedRows === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+      res.status(200).json({ message: 'School updated successfully' });
+  });
+});
+
+
 // 타이머 기록을 계산하는 엔드포인트
 app.post('/calculate-time-and-points', (req, res) => {
     const { input_record_time, user_id, start_time, end_time } = req.body;
