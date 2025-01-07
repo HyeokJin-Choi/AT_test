@@ -1472,6 +1472,29 @@ app.post('/send-friend-request', (req, res) => {
   });
 });
 
+// 친구 삭제
+app.post('/remove-friend', (req, res) => {
+  const { userId, friendId } = req.body;
+
+  const query = `
+    DELETE FROM Friends
+    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+  `;
+
+  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
+    if (err) {
+      console.error('Error rejecting friend request:', err);
+      return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json({ message: '친구가 삭제되었습니다.' });
+  });
+});
+
 
 // 친구 요청 목록 가져오기
 app.get('/friend-requests/:userId', (req, res) => {
