@@ -1327,7 +1327,7 @@ app.post('/get-placed-items', (req, res) => {
   const { userId } = req.body;
 
   const query = `
-    SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority, s.item_width, s.item_height
+    SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority, s.item_width, s.item_height, i.is_flipped
     FROM Inventory AS i
     INNER JOIN Store AS s ON i.item_id = s.item_id
     WHERE i.user_id = ? AND i.is_placed = 1
@@ -1348,7 +1348,7 @@ app.post('/remove-item', (req, res) => {
 
   const query = `
     UPDATE Inventory
-    SET is_placed = 0, priority = 0
+    SET is_placed = 0, priority = 0, is_flipped = 0
     WHERE user_id = ? AND inventory_id = ?
   `;
 
@@ -1368,17 +1368,12 @@ app.post('/remove-item', (req, res) => {
 
 // 아이템 위치 업데이트 API
 app.post('/update-item-position', async (req, res) => {
-  const { user_id, inventory_id, x, y, priority } = req.body;
+  const { user_id, inventory_id, x, y, priority, is_flipped } = req.body;
 
   try {
     await db.query(
-      `UPDATE Inventory SET priority = priority + 1 WHERE user_id = ? AND inventory_id != ? AND is_placed = 1`,
-      [user_id, inventory_id]
-    );
-
-    await db.query(
-      `UPDATE Inventory SET x = ?, y = ?, priority = ? WHERE user_id = ? AND inventory_id = ? AND is_placed = 1`,
-      [x, y, priority, user_id, inventory_id]
+      `UPDATE Inventory SET x = ?, y = ?, priority = ?, is_flipped = ? WHERE user_id = ? AND inventory_id = ? AND is_placed = 1`,
+      [x, y, priority, is_flipped, user_id, inventory_id]
     );
 
     res.json({ message: 'Item updated successfully' }); // 최종 응답
