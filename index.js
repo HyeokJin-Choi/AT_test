@@ -1290,6 +1290,28 @@ app.post('/purchaseItem', (req, res) => {
   });
 });
 
+app.post('/checkProfileOwnership', (req, res) => {
+  const { user_id } = req.body;
+
+  // Query to check if the user already owns an item in the "프로필" category
+  const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND category = "프로필"';
+  db.query(query, [user_id], (err, results) => {
+    if (err) {
+      console.error('Error checking profile ownership:', err);
+      res.status(500).json({ message: '서버 오류' });
+    } else {
+      const count = results[0].count;
+      if (count > 0) {
+        // If count > 0, the user already owns a profile item
+        res.status(200).json({ alreadyOwned: true });
+      } else {
+        res.status(200).json({ alreadyOwned: false });
+      }
+    }
+  });
+});
+
+
 //user의 가방
 app.post('/getUserItems', (req, res) => {
   const { user_id, category } = req.body; // 카테고리도 함께 받아옴
