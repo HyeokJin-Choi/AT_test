@@ -1866,3 +1866,26 @@ app.post('/reset-items-to-bag', async (req, res) => {
     res.status(500).json({ error: 'Database query failed' });
   }
 })
+
+app.post('/get-profile-icons', (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).send({ error: 'Missing userId' });
+  }
+
+  const query = `
+    SELECT item_id 
+    FROM Inventory 
+    WHERE user_id = ? AND category = '프로필'
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send({ error: 'Database query failed' });
+    }
+
+    res.send({ icons: results.map(row => row.item_id) });
+  });
+});
