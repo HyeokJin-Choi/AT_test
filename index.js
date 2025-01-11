@@ -943,8 +943,14 @@ app.post('/get-user-info', (req, res) => {
 app.post('/update-school', (req, res) => {
   const { userId, newSchoolName } = req.body;
 
-  const updateQuery = `UPDATE Users SET school_name = ? WHERE user_id = ?;`;
-  db.query(updateQuery, [newSchoolName, userId], (err, results) => {
+  const updateQuery = `
+        UPDATE Users 
+        INNER JOIN School ON School.school_name = ?
+        SET Users.school_name = ?, Users.school_id = School.school_id
+        WHERE Users.user_id = ?;
+    `;
+  
+  db.query(updateQuery, [newSchoolName, newSchoolName, userId], (err, results) => {
       if (err) {
           console.error('Error updating school name:', err);
           return res.status(500).json({ error: 'Failed to update school name' });
