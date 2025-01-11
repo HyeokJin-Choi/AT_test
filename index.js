@@ -918,10 +918,11 @@ app.post('/get-user-info', (req, res) => {
   console.log('Received userId:', userId);
 
   const query = `
-      SELECT nickname, school_name
+      SELECT nickname, school_name, email, profile_image
       FROM Users
       WHERE user_id = ?;
   `;
+
   db.query(query, [userId], (err, results) => {
       if (err) {
           console.error('Error fetching user info:', err);
@@ -934,6 +935,8 @@ app.post('/get-user-info', (req, res) => {
           res.status(200).json({
               nickname: results[0].nickname,
               schoolName: results[0].school_name,
+              email: results[0].email,
+              profileImage: results[0].profile_image, // 프로필 이미지 추가
           });
       }
   });
@@ -1896,25 +1899,120 @@ app.post('/reset-items-to-bag', async (req, res) => {
   }
 })
 
-app.post('/get-profile-icons', (req, res) => {
-  const { userId } = req.body;
+app.post('/change-password', (req, res) => {
+  const { userId, currentPassword, newPassword } = req.body;
 
-  if (!userId) {
-    return res.status(400).send({ error: 'Missing userId' });
-  }
-
-  const query = `
-    SELECT item_id 
-    FROM Inventory 
-    WHERE user_id = ? AND category = '프로필'
-  `;
-
-  db.query(query, [userId], (err, results) => {
+  // 1. 사용자 존재 여부 확인 및 비밀번호 가져오기
+  const sql = 'SELECT * FROM Users WHERE user_id = ?';
+  db.query(sql, [userId], (err, results) => {
     if (err) {
-      console.error(err);
-      return res.status(500).send({ error: 'Database query failed' });
+      console.error('서버 오류:', err);
+      return res.status(500).json({ message: '서버 오류' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
     }
 
-    res.send({ icons: results.map(row => row.item_id) });
+    const user = results[0];
+
+    // 2. 현재 비밀번호가 해시된 값인지 평문인지 구분하여 비교
+    if (user.password.startsWith('$2b$')) {
+      // 비밀번호가 해시된 값인 경우
+      bcrypt.compare(currentPassword, user.password, (err, isMatch) => {
+        if (err) {
+          console.error('비밀번호 비교 실패:', err);
+          return res.status(500).json({ message: '서버 오류' });
+        }
+        if (!isMatch) {
+          return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+        }
+
+        // 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
+        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+          if (err) {
+            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
+          }
+
+          // 비밀번호 업데이트 쿼리 실행
+          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
+          db.query(updateSql, [hashedPassword, userId], (err, result) => {
+            if (err) {
+              console.error('비밀번호 업데이트 중 오류 발생:', err);
+              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
+            }
+
+            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+          });
+        });
+      });
+    } else {
+      // 비밀번호가 평문인 경우
+      if (currentPassword === user.password) {
+        // 평문 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
+        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+          if (err) {
+            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
+          }
+
+          // 비밀번호 업데이트 쿼리 실행
+          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
+          db.query(updateSql, [hashedPassword, userId], (err, result) => {
+            if (err) {
+              console.error('비밀번호 업데이트 중 오류 발생:', err);
+              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
+            }
+
+            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+          });
+        });
+      } else {
+        return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+      }
+    }
   });
 });
+
+// "프로필" 카테고리에 해당하는 구매 아이템 가져오기
+app.post('/getPurchasedProfileIcons', (req, res) => {
+  const { user_id } = req.body;
+
+  const query = `
+    SELECT i.item_id, i.category, s.item_name
+    FROM Inventory i
+    JOIN Store s ON i.item_id = s.item_id
+    WHERE i.user_id = ? AND i.category = '프로필'
+  `;
+
+  db.query(query, [user_id], (err, results) => {
+    if (err) {
+      console.error('Error fetching purchased profile icons:', err);
+      res.status(500).json({ message: '프로필 아이템을 가져오는 중 문제가 발생했습니다.' });
+    } else {
+      res.status(200).json({
+        message: '프로필 아이템을 성공적으로 가져왔습니다.',
+        items: results,
+      });
+    }
+  });
+});
+
+// 프로필 이미지 수정
+app.post('/update-profile-image', (req, res) => {
+  const { userId, profileImage } = req.body;
+
+  const query = `
+    UPDATE Users
+    SET profile_image = ?
+    WHERE user_id = ?
+  `;
+
+  db.query(query, [profileImage, userId], (err, result) => {
+    if (err) {
+      console.error('Error updating profile image:', err);
+      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
+    } else {
+      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+    }
+  });
+});
+
