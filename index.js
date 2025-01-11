@@ -1291,18 +1291,18 @@ app.post('/purchaseItem', (req, res) => {
 });
 
 app.post('/checkProfileOwnership', (req, res) => {
-  const { user_id } = req.body;
+  const { user_id, item_id } = req.body; // 클라이언트에서 user_id와 item_id를 전달받음
 
-  // Query to check if the user already owns an item in the "프로필" category
-  const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND category = "프로필"';
-  db.query(query, [user_id], (err, results) => {
+  // Query to check if the user already owns the specific profile item
+  const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND item_id = ?';
+  db.query(query, [user_id, item_id], (err, results) => {
     if (err) {
       console.error('Error checking profile ownership:', err);
       res.status(500).json({ message: '서버 오류' });
     } else {
       const count = results[0].count;
       if (count > 0) {
-        // If count > 0, the user already owns a profile item
+        // If count > 0, the user already owns this profile item
         res.status(200).json({ alreadyOwned: true });
       } else {
         res.status(200).json({ alreadyOwned: false });
@@ -1310,6 +1310,7 @@ app.post('/checkProfileOwnership', (req, res) => {
     }
   });
 });
+
 
 
 //user의 가방
