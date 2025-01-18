@@ -1465,7 +1465,7 @@ app.get('/search-user', (req, res) => {
   const { nickname } = req.query;
   const userId = req.userId;  // 요청 보낸 사용자의 userId (예: 토큰에서 추출)
 
-  const query = 'SELECT user_id, nickname FROM Users WHERE nickname = ?';
+  const query = 'SELECT user_id, nickname, profile_image FROM Users WHERE nickname = ?';
 
   db.query(query, [nickname], (err, rows) => {
     if (err) {
@@ -1579,7 +1579,7 @@ app.get('/friend-requests/:userId', (req, res) => {
   const userId = req.params.userId;
 
   const query = `
-      SELECT f.friendship_id, f.user_id, f.friend_id, u.nickname
+      SELECT f.friendship_id, f.user_id, f.friend_id, u.nickname, u.profile_image
       FROM Friends f
       JOIN Users u ON f.user_id = u.user_id
       WHERE f.friend_id = ? AND f.status = 'requested'
@@ -1713,7 +1713,8 @@ app.get('/friends/:userId', (req, res) => {
         ELSE f.user_id
       END AS friend_id,
       u.nickname,
-      u.account_status
+      u.account_status,
+      u.profile_image
     FROM Friends f
     JOIN Users u ON u.user_id = (
       CASE
