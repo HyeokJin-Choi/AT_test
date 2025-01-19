@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 // 비용 계산 기준
-const cpuCostPerMs = 0.0001; // ms당 CPU 비용 ($)
-const networkCostPerByte = 0.00001; // 바이트당 네트워크 비용 ($)
+// const cpuCostPerMs = 0.0001; // ms당 CPU 비용 ($)
+// const networkCostPerByte = 0.00001; // 바이트당 네트워크 비용 ($)
+const cpuCostPerMs = 0.01; // ms당 CPU 비용 ($)
+const networkCostPerByte = 0.001; // 바이트당 네트워크 비용 ($)
+
 
 // 로그 파일 경로
 const logFilePath = path.join(__dirname, 'requests.log');
