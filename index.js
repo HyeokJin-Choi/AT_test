@@ -12,6 +12,25 @@ const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다
 const app = express();
 const port = 15023;
 
+// 서버의 이용료 측정---------------------
+const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
+
+// 요청 로그를 기록할 파일 생성
+const logStream = fs.createWriteStream(path.join(__dirname, 'requests.log'), { flags: 'a' });
+
+// 요청 처리 시간 및 응답 크기 로깅
+morgan.token('response-time-ms', (req, res) => `${res.getHeader('X-Response-Time') || 0}`);
+morgan.token('content-length-bytes', (req, res) => res.getHeader('content-length') || 0);
+
+app.use(
+  morgan(':method :url :status :response-time ms - :content-length bytes', {
+    stream: logStream,
+  })
+);
+//------------------------------------
+
 // MySQL 연결 설정
 const db = mysql.createConnection({
     host: '0.0.0.0',
