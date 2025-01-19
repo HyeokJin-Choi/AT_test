@@ -16,19 +16,57 @@ const port = 15023;
 const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
+const pidusage = require('pidusage');
 
-// 요청 로그를 기록할 파일 생성
-const logStream = fs.createWriteStream(path.join(__dirname, 'requests.log'), { flags: 'a' });
+// CPU 및 메모리 사용량 모니터링
+setInterval(async () => {
+  try {
+    const stats = await pidusage(process.pid);
+    console.log(`CPU 사용량: ${stats.cpu.toFixed(2)}%`);
+    console.log(`메모리 사용량: ${(stats.memory / 1024 / 1024).toFixed(2)} MB`);
+  } catch (err) {
+    console.error('리소스 사용량 측정 오류:', err);
+  }
+}, 5000); // 5초 간격으로 측정
 
-// 요청 처리 시간 및 응답 크기 로깅
-morgan.token('response-time-ms', (req, res) => `${res.getHeader('X-Response-Time') || 0}`);
-morgan.token('content-length-bytes', (req, res) => res.getHeader('content-length') || 0);
+// 네트워크 로그 파일 생성
+const logStream = fs.createWriteStream(path.join(__dirname, 'network.log'), { flags: 'a' });
+
+morgan.token('req-size', (req) => req.headers['content-length'] || 0);
+morgan.token('res-size', (req, res) => res.getHeader('content-length') || 0);
 
 app.use(
-  morgan(':method :url :status :response-time ms - :content-length bytes', {
-    stream: logStream,
-  })
+  morgan(':method :url :status :req-size bytes :res-size bytes', { stream: logStream })
 );
+
+// 요청당 비용 계산 미들웨어
+const cpuCostPerPercent = 0.00001; // CPU 사용량 1%당 비용 ($)
+const networkCostPerMB = 0.01; // 1MB당 네트워크 비용 ($)
+
+app.use(async (req, res, next) => {
+  const start = process.hrtime();
+
+  res.on('finish', async () => {
+    const elapsedTime = process.hrtime(start);
+    const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
+
+    const reqSize = parseInt(req.headers['content-length'] || '0', 10) / 1024 / 1024; // MB
+    const resSize = parseInt(res.getHeader('content-length') || '0', 10) / 1024 / 1024; // MB
+
+    try {
+      const stats = await pidusage(process.pid);
+      const cpuCost = stats.cpu * cpuCostPerPercent;
+      const networkCost = (reqSize + resSize) * networkCostPerMB;
+      const totalCost = cpuCost + networkCost;
+
+      console.log(`요청당 비용: $${totalCost.toFixed(6)} (CPU: $${cpuCost.toFixed(6)}, Network: $${networkCost.toFixed(6)})`);
+    } catch (err) {
+      console.error('요청당 비용 계산 오류:', err);
+    }
+  });
+
+  next();
+});
 //------------------------------------
 
 // MySQL 연결 설정
