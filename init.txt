@@ -30,4 +30,9 @@ npx pm2 delete at (서버 완전 삭제 (프로세스 목록에서 제거), at�
 <회원가입시 비속어 사용금지를 위한 사전 작업>
 cd AT_tset
 node merge-bad-words.js // ko-KR.txt, ja-JP.txt, zh-CN.txt, en-US.txt의 비속어 -> invalid-words.json로 저장
-
+---------------------------------------------------------------------
+<서버 예측 이용료의 확인을 위한 사전작업>
+npm install morgan
+npm install pidusage
+cd AT_test
+node calculateCosts.js
