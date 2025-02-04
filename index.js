@@ -146,149 +146,166 @@ app.use(express.json());
 
 // 월간 초기화 및 메달 수여 작업 (매월 1일 0시 실행)
 cron.schedule('0 0 1 * *', async () => {
-    try {
-        // 현재 날짜에서 현재 달 계산
-        const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
-        const getDateString = `${year}년 ${month}월`; // 예: "2024년 1월"
+  try {
+      // 현재 날짜에서 현재 달 계산
+      const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
+      const getDateString = `${year}년 ${month}월`; // 예: "2024년 1월"
 
-        // 대회 시작일(start_date)과 종료일(end_date) 계산 (현재 달)
-        const startDate = new Date(year, month - 1, 1);  // 현재 달의 1일
-        const endDate = new Date(year, month, 0);        // 현재 달의 마지막 날 (예: 12월 31일)
+      // 대회 시작일(start_date)과 종료일(end_date) 계산 (현재 달)
+      const startDate = new Date(year, month - 1, 1);  // 현재 달의 1일
+      const endDate = new Date(year, month, 0);        // 현재 달의 마지막 날 (예: 12월 31일)
 
-        // 지난달 계산
-        const { lastMonth, lastYear } = getLastMonth(); // 지난달 계산
-        const lastMonthDateString = `${lastYear}년 ${lastMonth}월`;
+      // 지난달 계산
+      const { lastMonth, lastYear } = getLastMonth(); // 지난달 계산
+      const lastMonthDateString = `${lastYear}년 ${lastMonth}월`;
+      console.log(`lastMonthDateString 값: ${lastMonthDateString}`);
 
-        // 지난달의 메달 수여 (RANK() 사용)
-        const topSchoolsLastMonth = await queryAsync(`
-            SELECT
-                school_id,
-                school_name,
-                school_local,
-                monthly_total_time,
-                RANK() OVER (ORDER BY monthly_total_time DESC) AS monthly_ranking
-            FROM School
-            WHERE monthly_total_time > 0
-            AND MONTH(start_date) = ${lastMonth}  -- 지난달의 데이터를 필터링
-        `);
+      // 대회 시작일(start_date)과 종료일(end_date) 계산 (지난달)
+      const lastStartDate = new Date(lastYear, lastMonth - 1, 1);  // 지난달의 1일
+      const lastEndDate = new Date(lastYear, lastMonth, 0);        // 지난달의 마지막 날 (예: 12월 31일)
 
-        // 지난달 메달 수여: 순위에 따라 메달 부여
-        for (const school of topSchoolsLastMonth) {
-            const ranking = School.monthly_ranking; // RANK()로 계산된 순위 사용
-            if (ranking > 3) break; // 4등 이상은 메달 수여 제외
+      // 지난달의 메달 수여 (RANK() 사용)
+      const topSchoolsLastMonth = await queryAsync(`
+          SELECT
+              school_id,
+              school_name,
+              school_local,
+              monthly_total_time,
+              RANK() OVER (ORDER BY monthly_total_time DESC) AS monthly_ranking
+          FROM School
+          WHERE monthly_total_time > 0
+      `);
 
-            // 해당 학교 소속 사용자 가져오기
-            const users = await queryAsync(`
-                SELECT user_id
-                FROM Users
-                WHERE school_id = ?
-            `, [School.school_id]);
+      // 지난달 메달 수여: 순위에 따라 메달 부여
+      for (const school of topSchoolsLastMonth) {
+          const ranking = school.monthly_ranking; // RANK()로 계산된 순위 사용
+          if (ranking > 3) break; // 4등 이상은 메달 수여 제외
 
-            // 사용자에게 메달 부여
-            if (users.length > 0) {
-                const battleInf = `${lastMonthDateString} 전국대회 메달`; // 지역 포함 메달 정보
-                await Promise.all(users.map(user =>
-                    queryAsync(`
-                        INSERT INTO Medal (user_id, school_id, school_name, ranking, monthly_total_time, get_date, battle_inf, school_local)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        user.user_id,                // 사용자 ID
-                        School.school_id,            // 학교 ID
-                        School.school_name,          // 학교 이름
-                        ranking,                     // 순위
-                        School.monthly_total_time,   // 월간 총 시간
-                        lastMonthDateString,         // 메달 수여 날짜 (ex. "2024년 1월")
-                        battleInf,                   // "월 전국대회 메달" 형식의 정보
-                        School.school_local
-                    ])
-                ));
+          // 해당 학교 소속 사용자 가져오기
+          const users = await queryAsync(`
+              SELECT user_id
+              FROM Users
+              WHERE school_id = ?
+          `, [school.school_id]);
 
-                // 메달 수여 알림 생성
-                await Promise.all(users.map(user =>
-                    queryAsync(`
-                        CALL CreateNotification(?, ?, '대회 메달을 수여 받았습니다!', 'reward')
-                    `, [user.user_id, `${lastMonthDateString} 메달 수여`])
-                ));
-            }
-        }
+          // 사용자에게 메달 부여
+          if (users.length > 0) {
+              const battleInf = `${lastMonthDateString} 전국대회 메달`; // 지역 포함 메달 정보
+              let rewardPoints = 0;
 
-        // 현재 달의 RANK() 사용하여 월간 순위 계산
-        const topSchools = await queryAsync(`
-            SELECT
-                school_id,
-                school_name,
-                school_local,
-                monthly_total_time,
-                RANK() OVER (ORDER BY monthly_total_time DESC) AS monthly_ranking
-            FROM School
-            WHERE monthly_total_time > 0
-        `);
+              // 등수에 따른 포인트 지급
+                      if (ranking === 1) {
+                          rewardPoints = 50000000; // 1등: 50,000,000 포인트
+                      } else if (ranking === 2) {
+                          rewardPoints = 10000000; // 2등: 10,000,000 포인트
+                      } else if (ranking === 3) {
+                          rewardPoints = 3000000;  // 3등: 3000,000 포인트
+                      }
 
-        // 메달 수여: 순위에 따라 메달 부여
-        for (const school of topSchools) {
-            const ranking = School.monthly_ranking; // RANK()로 계산된 순위 사용
-            if (ranking > 3) break; // 4등 이상은 메달 수여 제외
+              await Promise.all(users.map(user =>
+                  queryAsync(`
+                      INSERT INTO Medal (user_id, school_id, school_name, ranking, monthly_total_time, get_date, battle_inf, school_local)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  `, [
+                      user.user_id,                // 사용자 ID
+                      school.school_id,            // 학교 ID
+                      school.school_name,          // 학교 이름
+                      ranking,                     // 순위
+                      school.monthly_total_time,   // 월간 총 시간
+                      lastMonthDateString,         // 메달 수여 날짜 (ex. "2024년 12월")
+                      battleInf,                   // "월 전국대회 메달" 형식의 정보
+                      school.school_local
+                  ])
+              ));
 
-            // 해당 학교 소속 사용자 가져오기
-            const users = await queryAsync(`
-                SELECT user_id
-                FROM Users
-                WHERE school_id = ?
-            `, [School.school_id]);
+              // 포인트 지급 (Users 테이블에 포인트 컬럼이 있다고 가정)
+                      await Promise.all(users.map(user =>
+                          queryAsync(`
+                              UPDATE Users
+                              SET points = points + ?
+                              WHERE user_id = ?
+                          `, [rewardPoints, user.user_id])
+                      ));
 
-            // 사용자에게 메달 부여
-            if (Users.length > 0) {
-                const battleInf = `${getDateString} 전국대회 메달`; // 지역 포함 메달 정보
-                await Promise.all(users.map(user =>
-                    queryAsync(`
-                        INSERT INTO Medal (user_id, school_id, school_name, ranking, monthly_total_time, get_date, battle_inf, school_local)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        user.user_id,                // 사용자 ID
-                        School.school_id,            // 학교 ID
-                        School.school_name,          // 학교 이름
-                        ranking,                     // 순위
-                        School.monthly_total_time,   // 월간 총 시간
-                        getDateString,               // 메달 수여 날짜 (ex. "2024년 1월")
-                        battleInf,                   // "월 전국대회 메달" 형식의 정보
-                        School.school_local
-                    ])
-                ));
 
-                // 메달 수여 알림 생성
-                await Promise.all(users.map(user =>
-                    queryAsync(`
-                        CALL CreateNotification(?, ?, '대회 메달을 수여 받았습니다!', 'reward')
-                    `, [user.user_id, `${getDateString} 메달 수여`])
-                ));
-            }
-        }
+              // 메달 수여 알림 생성
+              await Promise.all(users.map(user =>
+                  queryAsync(`
+                      CALL CreateNotification(?, ?, '대회 메달과 포인트를 수여 받았습니다!', 'reward')
+                  `, [user.user_id, `${lastMonthDateString} 메달 수여`])
+              ));
+          }
+      }
 
-        // monthly_total_time 초기화
-        await queryAsync('UPDATE School SET monthly_total_time = 0');
+      // monthly_total_time 초기화
+      await queryAsync('UPDATE School SET monthly_total_time = 0');
 
-        console.log(`${getDateString} 메달 수여 완료 및 월간 초기화`);
+      // monthly_time 초기화 (사용자별)
+      await queryAsync('UPDATE StudyTimeRecords SET monthly_time = 0');
 
-        // 대회 시작 알림을 모든 사용자에게 전송
-        const allUsers = await queryAsync('SELECT user_id FROM Users');
-        await Promise.all(allUsers.map(user =>
-            queryAsync(`
-                CALL CreateNotification(?,?,'대회가 시작되었습니다!', 'system')
-            `, [user.user_id, `${getDateString} 대회 시작`])
-        ));
+      console.log(`${lastMonthDateString} 메달 수여 완료 및 월간 초기화`);
 
-        // 대회 시작일(start_date)과 종료일(end_date) 업데이트
-        await queryAsync(`
-            UPDATE School
-                SET start_date = ?, end_date = ?
-        `, [startDate, endDate]);
+      // 대회 종료 알림
+      const allUsers = await queryAsync('SELECT user_id FROM Users');
+      await Promise.all(allUsers.map(user =>
+          queryAsync(`
+              CALL CreateNotification(?, ?, '${lastMonthDateString} 대회가 종료되었습니다!', 'system')
+          `, [user.user_id, `${lastMonthDateString} 대회 종료`])
+      ));
 
-        console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
+      // 대회 시작 알림
+      await Promise.all(allUsers.map(user =>
+          queryAsync(`
+              CALL CreateNotification(?, ?, '${getDateString} 대회 시작되었습니다!', 'system')
+          `, [user.user_id, `${getDateString} 대회 시작`])
+      ));
 
-    } catch (error) {
-        console.error('월간 초기화 오류:', error);
-    }
+
+      // 대회 시작일(start_date)과 종료일(end_date) 업데이트
+      await queryAsync(`
+          UPDATE School
+              SET start_date = ?, end_date = ?
+      `, [startDate, endDate]);
+
+      console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
+
+  } catch (error) {
+      console.error('월간 초기화 오류:', error);
+  }
 });
+
+// 현재 달 계산 함수
+function getCurrentMonth() {
+  const now = new Date();
+  const month = now.getMonth() + 1; // 0 = 1월, 11 = 12월
+  const year = now.getFullYear(); // 현재 연도
+  return { month, year };
+}
+
+// 지난달 계산 함수
+function getLastMonth() {
+  const now = new Date();
+  let month = now.getMonth(); // 0 = 1월, 11 = 12월
+  let year = now.getFullYear();
+
+  if (month === 0) {  // 1월일 경우 12월로 설정하고, 연도를 하나 감소시킴
+      month = 12;
+      year -= 1;
+  }
+
+  return { lastMonth: month, lastYear: year };  // 지난달과 연도를 반환
+}
+
+// Promise 기반으로 MySQL 쿼리 실행
+function queryAsync(query, params = []) {
+  return new Promise((resolve, reject) => {
+      db.query(query, params, (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+      });
+  });
+}
+
 
 // 현재 달 계산 함수
 function getCurrentMonth() {
@@ -716,7 +733,7 @@ app.get('/school-rankings', (req, res) => {
   if (competition === '지역 대회' && local) {
       const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
                     FROM School
-                    WHERE school_local = ? AND total_time > 0
+                    WHERE school_local = ? AND monthly_total_time > 0
                     ORDER BY local_ranking ASC;`;
 
     db.query(query, local, (err, results) => {
@@ -744,7 +761,7 @@ app.get('/school-rankings', (req, res) => {
                              school_local,
                              ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
                            FROM School
-                           WHERE total_time > 0
+                           WHERE monthly_total_time > 0
                          )
                          SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
                          FROM RankedSchools
@@ -829,13 +846,13 @@ app.post('/school-contributions', (req, res) => {
       SELECT u.nickname, s.total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE u.school_name = ?
+      WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
       ORDER BY s.total_time DESC
     ` : `
       SELECT u.nickname, s.monthly_time AS total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE u.school_name = ?
+      WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
       ORDER BY s.monthly_time DESC
     `;
 
@@ -889,8 +906,6 @@ app.post('/school-contributions', (req, res) => {
   });
 });
 
-
-
 app.post('/selected-school-contributions', (req, res) => {
   const schoolName = req.body.schoolName;
 
@@ -903,7 +918,7 @@ app.post('/selected-school-contributions', (req, res) => {
     SELECT u.nickname, s.total_time
     FROM Users u
     JOIN StudyTimeRecords s ON u.user_id = s.user_id
-    WHERE u.school_name = ?
+    WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
     ORDER BY s.total_time DESC
   `;
 
@@ -935,7 +950,7 @@ app.post('/selected-school-competition', (req, res) => {
     SELECT u.nickname, s.monthly_time
     FROM Users u
     JOIN StudyTimeRecords s ON u.user_id = s.user_id
-    WHERE u.school_name = ?
+    WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
     ORDER BY s.monthly_time DESC
   `;
 
@@ -967,61 +982,6 @@ app.post('/get-user-id', async (req, res) => {
         res.status(200).json({ user_id: results[0].user_id});
         });
 });
-
-
-// 사용자 정보 가져오기
-app.post('/get-user-info', (req, res) => {
-  const { userId } = req.body;
-  console.log('Received userId:', userId);
-
-  const query = `
-      SELECT nickname, school_name, email, profile_image
-      FROM Users
-      WHERE user_id = ?;
-  `;
-
-  db.query(query, [userId], (err, results) => {
-      if (err) {
-          console.error('Error fetching user info:', err);
-          return res.status(500).json({ error: 'Failed to fetch user info' });
-      }
-      console.log('Query result:', results); // 디버깅 로그
-      if (results.length === 0) {
-          return res.status(404).json({ error: 'User not found' });
-      } else {
-          res.status(200).json({
-              nickname: results[0].nickname,
-              schoolName: results[0].school_name,
-              email: results[0].email,
-              profileImage: results[0].profile_image, // 프로필 이미지 추가
-          });
-      }
-  });
-});
-
-// 학교 수정
-app.post('/update-school', (req, res) => {
-  const { userId, newSchoolName } = req.body;
-
-  const updateQuery = `
-        UPDATE Users 
-        INNER JOIN School ON School.school_name = ?
-        SET Users.school_name = ?, Users.school_id = School.school_id
-        WHERE Users.user_id = ?;
-    `;
-  
-  db.query(updateQuery, [newSchoolName, newSchoolName, userId], (err, results) => {
-      if (err) {
-          console.error('Error updating school name:', err);
-          return res.status(500).json({ error: 'Failed to update school name' });
-      }
-      if (results.affectedRows === 0) {
-          return res.status(404).json({ error: 'User not found' });
-      }
-      res.status(200).json({ message: 'School updated successfully' });
-  });
-});
-
 
 // 타이머 기록을 계산하는 엔드포인트
 app.post('/calculate-time-and-points', (req, res) => {
@@ -1222,6 +1182,56 @@ app.post('/get-medal-info', (req, res) => {
   });
 });
 
+// 사용자 정보 가져오기
+app.post('/get-user-info', (req, res) => {
+  const { userId } = req.body;
+  console.log('Received userId:', userId);
+
+  const query = `
+      SELECT nickname, school_name
+      FROM Users
+      WHERE user_id = ?;
+  `;
+  db.query(query, [userId], (err, results) => {
+      if (err) {
+          console.error('Error fetching user info:', err);
+          return res.status(500).json({ error: 'Failed to fetch user info' });
+      }
+      console.log('Query result:', results); // 디버깅 로그
+      if (results.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      } else {
+          res.status(200).json({
+              nickname: results[0].nickname,
+              schoolName: results[0].school_name,
+          });
+      }
+  });
+});
+
+// 학교 수정
+app.post('/update-school', (req, res) => {
+  const { userId, newSchoolName } = req.body;
+
+  const updateQuery = `
+        UPDATE Users 
+        INNER JOIN School ON School.school_name = ?
+        SET Users.school_name = ?, Users.school_id = School.school_id
+        WHERE Users.user_id = ?;
+    `;
+  
+  db.query(updateQuery, [newSchoolName, newSchoolName, userId], (err, results) => {
+      if (err) {
+          console.error('Error updating school name:', err);
+          return res.status(500).json({ error: 'Failed to update school name' });
+      }
+      if (results.affectedRows === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+      res.status(200).json({ message: 'School updated successfully' });
+  });
+});
+
 // 칠판에 학교명 띄우기
 app.post('/get-user-school-name', (req, res) => {
   const { userId } = req.body;
@@ -1355,29 +1365,6 @@ app.post('/purchaseItem', (req, res) => {
     }
   });
 });
-
-app.post('/checkProfileOwnership', (req, res) => {
-  const { user_id, item_id } = req.body; // 클라이언트에서 user_id와 item_id를 전달받음
-
-  // Query to check if the user already owns the specific profile item
-  const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND item_id = ?';
-  db.query(query, [user_id, item_id], (err, results) => {
-    if (err) {
-      console.error('Error checking profile ownership:', err);
-      res.status(500).json({ message: '서버 오류' });
-    } else {
-      const count = results[0].count;
-      if (count > 0) {
-        // If count > 0, the user already owns this profile item
-        res.status(200).json({ alreadyOwned: true });
-      } else {
-        res.status(200).json({ alreadyOwned: false });
-      }
-    }
-  });
-});
-
-
 
 //user의 가방
 app.post('/getUserItems', (req, res) => {
@@ -1607,29 +1594,6 @@ app.post('/send-friend-request', (req, res) => {
   });
 });
 
-// 친구 삭제
-app.post('/remove-friend', (req, res) => {
-  const { userId, friendId } = req.body;
-
-  const query = `
-    DELETE FROM Friends
-    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
-  `;
-
-  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
-    if (err) {
-      console.error('Error rejecting friend request:', err);
-      return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
-    }
-
-    res.status(200).json({ message: '친구가 삭제되었습니다.' });
-  });
-});
-
 
 // 친구 요청 목록 가져오기
 app.get('/friend-requests/:userId', (req, res) => {
@@ -1798,6 +1762,29 @@ app.get('/friends/:userId', (req, res) => {
   });
 });
 
+// 친구 삭제
+app.post('/remove-friend', (req, res) => {
+  const { userId, friendId } = req.body;
+
+  const query = `
+    DELETE FROM Friends
+    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+  `;
+
+  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
+    if (err) {
+      console.error('Error rejecting friend request:', err);
+      return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json({ message: '친구가 삭제되었습니다.' });
+  });
+});
+
 // 알림 데이터 가져오기
 app.post('/get-notifications', (req, res) => {
     const { userId } = req.body;
@@ -1956,121 +1943,3 @@ app.post('/reset-items-to-bag', async (req, res) => {
     res.status(500).json({ error: 'Database query failed' });
   }
 })
-
-app.post('/change-password', (req, res) => {
-  const { userId, currentPassword, newPassword } = req.body;
-
-  // 1. 사용자 존재 여부 확인 및 비밀번호 가져오기
-  const sql = 'SELECT * FROM Users WHERE user_id = ?';
-  db.query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('서버 오류:', err);
-      return res.status(500).json({ message: '서버 오류' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-    }
-
-    const user = results[0];
-
-    // 2. 현재 비밀번호가 해시된 값인지 평문인지 구분하여 비교
-    if (user.password.startsWith('$2b$')) {
-      // 비밀번호가 해시된 값인 경우
-      bcrypt.compare(currentPassword, user.password, (err, isMatch) => {
-        if (err) {
-          console.error('비밀번호 비교 실패:', err);
-          return res.status(500).json({ message: '서버 오류' });
-        }
-        if (!isMatch) {
-          return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
-        }
-
-        // 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
-        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
-          if (err) {
-            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
-          }
-
-          // 비밀번호 업데이트 쿼리 실행
-          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
-          db.query(updateSql, [hashedPassword, userId], (err, result) => {
-            if (err) {
-              console.error('비밀번호 업데이트 중 오류 발생:', err);
-              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
-            }
-
-            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-          });
-        });
-      });
-    } else {
-      // 비밀번호가 평문인 경우
-      if (currentPassword === user.password) {
-        // 평문 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
-        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
-          if (err) {
-            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
-          }
-
-          // 비밀번호 업데이트 쿼리 실행
-          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
-          db.query(updateSql, [hashedPassword, userId], (err, result) => {
-            if (err) {
-              console.error('비밀번호 업데이트 중 오류 발생:', err);
-              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
-            }
-
-            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-          });
-        });
-      } else {
-        return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
-      }
-    }
-  });
-});
-
-// "프로필" 카테고리에 해당하는 구매 아이템 가져오기
-app.post('/getPurchasedProfileIcons', (req, res) => {
-  const { user_id } = req.body;
-
-  const query = `
-    SELECT i.item_id, i.category, s.item_name
-    FROM Inventory i
-    JOIN Store s ON i.item_id = s.item_id
-    WHERE i.user_id = ? AND i.category = '프로필'
-  `;
-
-  db.query(query, [user_id], (err, results) => {
-    if (err) {
-      console.error('Error fetching purchased profile icons:', err);
-      res.status(500).json({ message: '프로필 아이템을 가져오는 중 문제가 발생했습니다.' });
-    } else {
-      res.status(200).json({
-        message: '프로필 아이템을 성공적으로 가져왔습니다.',
-        items: results,
-      });
-    }
-  });
-});
-
-// 프로필 이미지 수정
-app.post('/update-profile-image', (req, res) => {
-  const { userId, profileImage } = req.body;
-
-  const query = `
-    UPDATE Users
-    SET profile_image = ?
-    WHERE user_id = ?
-  `;
-
-  db.query(query, [profileImage, userId], (err, result) => {
-    if (err) {
-      console.error('Error updating profile image:', err);
-      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
-    } else {
-      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
-    }
-  });
-});
-
