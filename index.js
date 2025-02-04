@@ -146,166 +146,133 @@ app.use(express.json());
 
 // 월간 초기화 및 메달 수여 작업 (매월 1일 0시 실행)
 cron.schedule('0 0 1 * *', async () => {
-  try {
-      // 현재 날짜에서 현재 달 계산
-      const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
-      const getDateString = `${year}년 ${month}월`; // 예: "2024년 1월"
+    try {
+        // 현재 날짜에서 현재 달 계산
+        const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
+        const getDateString = `${year}년 ${month}월`; // 예: "2024년 1월"
 
-      // 대회 시작일(start_date)과 종료일(end_date) 계산 (현재 달)
-      const startDate = new Date(year, month - 1, 1);  // 현재 달의 1일
-      const endDate = new Date(year, month, 0);        // 현재 달의 마지막 날 (예: 12월 31일)
+        // 대회 시작일(start_date)과 종료일(end_date) 계산 (현재 달)
+        const startDate = new Date(year, month - 1, 1);  // 현재 달의 1일
+        const endDate = new Date(year, month, 0);        // 현재 달의 마지막 날 (예: 12월 31일)
 
-      // 지난달 계산
-      const { lastMonth, lastYear } = getLastMonth(); // 지난달 계산
-      const lastMonthDateString = `${lastYear}년 ${lastMonth}월`;
-      console.log(`lastMonthDateString 값: ${lastMonthDateString}`);
+        // 지난달 계산
+        const { lastMonth, lastYear } = getLastMonth(); // 지난달 계산
+        const lastMonthDateString = `${lastYear}년 ${lastMonth}월`;
+        console.log(`lastMonthDateString 값: ${lastMonthDateString}`);
 
-      // 대회 시작일(start_date)과 종료일(end_date) 계산 (지난달)
-      const lastStartDate = new Date(lastYear, lastMonth - 1, 1);  // 지난달의 1일
-      const lastEndDate = new Date(lastYear, lastMonth, 0);        // 지난달의 마지막 날 (예: 12월 31일)
+        // 대회 시작일(start_date)과 종료일(end_date) 계산 (지난달)
+        const lastStartDate = new Date(lastYear, lastMonth - 1, 1);  // 지난달의 1일
+        const lastEndDate = new Date(lastYear, lastMonth, 0);        // 지난달의 마지막 날 (예: 12월 31일)
 
-      // 지난달의 메달 수여 (RANK() 사용)
-      const topSchoolsLastMonth = await queryAsync(`
-          SELECT
-              school_id,
-              school_name,
-              school_local,
-              monthly_total_time,
-              RANK() OVER (ORDER BY monthly_total_time DESC) AS monthly_ranking
-          FROM School
-          WHERE monthly_total_time > 0
-      `);
+        // 지난달의 메달 수여 (RANK() 사용)
+        const topSchoolsLastMonth = await queryAsync(`
+            SELECT
+                school_id,
+                school_name,
+                school_local,
+                monthly_total_time,
+                RANK() OVER (ORDER BY monthly_total_time DESC) AS monthly_ranking
+            FROM School
+            WHERE monthly_total_time > 0
+        `);
 
-      // 지난달 메달 수여: 순위에 따라 메달 부여
-      for (const school of topSchoolsLastMonth) {
-          const ranking = school.monthly_ranking; // RANK()로 계산된 순위 사용
-          if (ranking > 3) break; // 4등 이상은 메달 수여 제외
+        // 지난달 메달 수여: 순위에 따라 메달 부여
+        for (const school of topSchoolsLastMonth) {
+            const ranking = school.monthly_ranking; // RANK()로 계산된 순위 사용
+            if (ranking > 3) break; // 4등 이상은 메달 수여 제외
 
-          // 해당 학교 소속 사용자 가져오기
-          const users = await queryAsync(`
-              SELECT user_id
-              FROM Users
-              WHERE school_id = ?
-          `, [school.school_id]);
+            // 해당 학교 소속 사용자 가져오기
+            const users = await queryAsync(`
+                SELECT user_id
+                FROM Users
+                WHERE school_id = ?
+            `, [school.school_id]);
 
-          // 사용자에게 메달 부여
-          if (users.length > 0) {
-              const battleInf = `${lastMonthDateString} 전국대회 메달`; // 지역 포함 메달 정보
-              let rewardPoints = 0;
+            // 사용자에게 메달 부여
+            if (users.length > 0) {
+                const battleInf = `${lastMonthDateString} 전국대회 메달`; // 지역 포함 메달 정보
+                let rewardPoints = 0;
 
-              // 등수에 따른 포인트 지급
-                      if (ranking === 1) {
-                          rewardPoints = 50000000; // 1등: 50,000,000 포인트
-                      } else if (ranking === 2) {
-                          rewardPoints = 10000000; // 2등: 10,000,000 포인트
-                      } else if (ranking === 3) {
-                          rewardPoints = 3000000;  // 3등: 3000,000 포인트
-                      }
+                // 등수에 따른 포인트 지급
+                        if (ranking === 1) {
+                            rewardPoints = 50000000; // 1등: 50,000,000 포인트
+                        } else if (ranking === 2) {
+                            rewardPoints = 10000000; // 2등: 10,000,000 포인트
+                        } else if (ranking === 3) {
+                            rewardPoints = 3000000;  // 3등: 3000,000 포인트
+                        }
 
-              await Promise.all(users.map(user =>
-                  queryAsync(`
-                      INSERT INTO Medal (user_id, school_id, school_name, ranking, monthly_total_time, get_date, battle_inf, school_local)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                  `, [
-                      user.user_id,                // 사용자 ID
-                      school.school_id,            // 학교 ID
-                      school.school_name,          // 학교 이름
-                      ranking,                     // 순위
-                      school.monthly_total_time,   // 월간 총 시간
-                      lastMonthDateString,         // 메달 수여 날짜 (ex. "2024년 12월")
-                      battleInf,                   // "월 전국대회 메달" 형식의 정보
-                      school.school_local
-                  ])
-              ));
+                await Promise.all(users.map(user =>
+                    queryAsync(`
+                        INSERT INTO Medal (user_id, school_id, school_name, ranking, monthly_total_time, get_date, battle_inf, school_local)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `, [
+                        user.user_id,                // 사용자 ID
+                        school.school_id,            // 학교 ID
+                        school.school_name,          // 학교 이름
+                        ranking,                     // 순위
+                        school.monthly_total_time,   // 월간 총 시간
+                        lastMonthDateString,         // 메달 수여 날짜 (ex. "2024년 12월")
+                        battleInf,                   // "월 전국대회 메달" 형식의 정보
+                        school.school_local
+                    ])
+                ));
 
-              // 포인트 지급 (Users 테이블에 포인트 컬럼이 있다고 가정)
-                      await Promise.all(users.map(user =>
-                          queryAsync(`
-                              UPDATE Users
-                              SET points = points + ?
-                              WHERE user_id = ?
-                          `, [rewardPoints, user.user_id])
-                      ));
-
-
-              // 메달 수여 알림 생성
-              await Promise.all(users.map(user =>
-                  queryAsync(`
-                      CALL CreateNotification(?, ?, '대회 메달과 포인트를 수여 받았습니다!', 'reward')
-                  `, [user.user_id, `${lastMonthDateString} 메달 수여`])
-              ));
-          }
-      }
-
-      // monthly_total_time 초기화
-      await queryAsync('UPDATE School SET monthly_total_time = 0');
-
-      // monthly_time 초기화 (사용자별)
-      await queryAsync('UPDATE StudyTimeRecords SET monthly_time = 0');
-
-      console.log(`${lastMonthDateString} 메달 수여 완료 및 월간 초기화`);
-
-      // 대회 종료 알림
-      const allUsers = await queryAsync('SELECT user_id FROM Users');
-      await Promise.all(allUsers.map(user =>
-          queryAsync(`
-              CALL CreateNotification(?, ?, '${lastMonthDateString} 대회가 종료되었습니다!', 'system')
-          `, [user.user_id, `${lastMonthDateString} 대회 종료`])
-      ));
-
-      // 대회 시작 알림
-      await Promise.all(allUsers.map(user =>
-          queryAsync(`
-              CALL CreateNotification(?, ?, '${getDateString} 대회 시작되었습니다!', 'system')
-          `, [user.user_id, `${getDateString} 대회 시작`])
-      ));
+                // 포인트 지급 (Users 테이블에 포인트 컬럼이 있다고 가정)
+                        await Promise.all(users.map(user =>
+                            queryAsync(`
+                                UPDATE Users
+                                SET points = points + ?
+                                WHERE user_id = ?
+                            `, [rewardPoints, user.user_id])
+                        ));
 
 
-      // 대회 시작일(start_date)과 종료일(end_date) 업데이트
-      await queryAsync(`
-          UPDATE School
-              SET start_date = ?, end_date = ?
-      `, [startDate, endDate]);
+                // 메달 수여 알림 생성
+                await Promise.all(users.map(user =>
+                    queryAsync(`
+                        CALL CreateNotification(?, ?, '대회 메달과 포인트를 수여 받았습니다!', 'reward')
+                    `, [user.user_id, `${lastMonthDateString} 메달 수여`])
+                ));
+            }
+        }
 
-      console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
+        // monthly_total_time 초기화
+        await queryAsync('UPDATE School SET monthly_total_time = 0');
 
-  } catch (error) {
-      console.error('월간 초기화 오류:', error);
-  }
+        // monthly_time 초기화 (사용자별)
+        await queryAsync('UPDATE StudyTimeRecords SET monthly_time = 0');
+
+        console.log(`${lastMonthDateString} 메달 수여 완료 및 월간 초기화`);
+
+        // 대회 종료 알림
+        const allUsers = await queryAsync('SELECT user_id FROM Users');
+        await Promise.all(allUsers.map(user =>
+            queryAsync(`
+                CALL CreateNotification(?, ?, '${lastMonthDateString} 대회가 종료되었습니다!', 'system')
+            `, [user.user_id, `${lastMonthDateString} 대회 종료`])
+        ));
+
+        // 대회 시작 알림
+        await Promise.all(allUsers.map(user =>
+            queryAsync(`
+                CALL CreateNotification(?, ?, '${getDateString} 대회 시작되었습니다!', 'system')
+            `, [user.user_id, `${getDateString} 대회 시작`])
+        ));
+
+
+        // 대회 시작일(start_date)과 종료일(end_date) 업데이트
+        await queryAsync(`
+            UPDATE School
+                SET start_date = ?, end_date = ?
+        `, [startDate, endDate]);
+
+        console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
+
+    } catch (error) {
+        console.error('월간 초기화 오류:', error);
+    }
 });
-
-// 현재 달 계산 함수
-function getCurrentMonth() {
-  const now = new Date();
-  const month = now.getMonth() + 1; // 0 = 1월, 11 = 12월
-  const year = now.getFullYear(); // 현재 연도
-  return { month, year };
-}
-
-// 지난달 계산 함수
-function getLastMonth() {
-  const now = new Date();
-  let month = now.getMonth(); // 0 = 1월, 11 = 12월
-  let year = now.getFullYear();
-
-  if (month === 0) {  // 1월일 경우 12월로 설정하고, 연도를 하나 감소시킴
-      month = 12;
-      year -= 1;
-  }
-
-  return { lastMonth: month, lastYear: year };  // 지난달과 연도를 반환
-}
-
-// Promise 기반으로 MySQL 쿼리 실행
-function queryAsync(query, params = []) {
-  return new Promise((resolve, reject) => {
-      db.query(query, params, (err, result) => {
-          if (err) reject(err);
-          else resolve(result);
-      });
-  });
-}
-
 
 // 현재 달 계산 함수
 function getCurrentMonth() {
@@ -321,12 +288,12 @@ function getLastMonth() {
     let month = now.getMonth(); // 0 = 1월, 11 = 12월
     let year = now.getFullYear();
 
-    if (month === 0) {
+    if (month === 0) {  // 1월일 경우 12월로 설정하고, 연도를 하나 감소시킴
         month = 12;
         year -= 1;
     }
 
-    return { lastMonth: month, lastYear: year };
+    return { lastMonth: month, lastYear: year };  // 지난달과 연도를 반환
 }
 
 // Promise 기반으로 MySQL 쿼리 실행
