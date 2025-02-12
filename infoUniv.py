@@ -3,7 +3,8 @@ import pymysql
 
 # 1. CSV 파일 읽기
 file_path = '전국대학및전문대학정보표준데이터.csv'
-data = pd.read_csv(file_path, usecols=['학교명'])
+# data = pd.read_csv(file_path, usecols=['학교명'])
+data = pd.read_csv(file_path, usecols=['학교명', '시도명', '소재지도로명주소'])
 data.fillna('', inplace=True)  # NaN 값 처리
 
 # 2. 대학명 중복 제거
@@ -23,10 +24,16 @@ connection = pymysql.connect(
 try:
     with connection.cursor() as cursor:
         # INSERT 쿼리 준비
-        insert_query = "INSERT INTO School (school_name) VALUES (%s)"
+        insert_query = "INSERT INTO School (school_name, school_local, school_address) VALUES (%s, %s, %s)"
         # 데이터 삽입
         for _, row in data.iterrows():
-            cursor.execute(insert_query, (row['학교명'],))
+            cursor.execute(insert_query, (row['학교명'], row['시도명'], row['소재지도로명주소']))
+            
+        # # INSERT 쿼리 준비
+        # insert_query = "INSERT INTO School (school_name) VALUES (%s)"
+        # # 데이터 삽입
+        # for _, row in data.iterrows():
+        #     cursor.execute(insert_query, (row['학교명'],))
     connection.commit()
     print("데이터 삽입 완료!")
 finally:
