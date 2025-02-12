@@ -78,8 +78,8 @@ const db = mysql.createConnection({
   multipleStatements: true // 여기에 추가
 });
 
-const fs = require('fs');
-const path = require('path');
+// const fs = require('fs');
+// const path = require('path');
 
 // 비속어 리스트 로드
 const badWords = JSON.parse(
