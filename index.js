@@ -71,15 +71,15 @@ app.use(async (req, res, next) => {
 
 // MySQL 연결 설정
 const db = mysql.createConnection({
-    host: '0.0.0.0',
-    user: 'checkjin_2023874', // MySQL 사용자명
-    password: 'checkjin_2023874', // MySQL 비밀번호
-    database: 'checkjin_2023874', // 사용할 데이터베이스
-    multipleStatements: true // 여기에 추가
+  host: '0.0.0.0',
+  user: 'checkjin_2023874', // MySQL 사용자명
+  password: 'checkjin_2023874', // MySQL 비밀번호
+  database: 'checkjin_2023874', // 사용할 데이터베이스
+  multipleStatements: true // 여기에 추가
 });
 
-// const fs = require('fs');
-// const path = require('path');
+const fs = require('fs');
+const path = require('path');
 
 // 비속어 리스트 로드
 const badWords = JSON.parse(
@@ -90,7 +90,6 @@ const badWords = JSON.parse(
 function containsBadWords(nickname) {
   return badWords.some((word) => nickname.includes(word));
 }
-
 // 닉네임 검증 함수
 function isValidNickname(nickname) {
   const koreanRegex = /^[가-힣]{2,8}$/; // 한글 2~8자
@@ -126,7 +125,7 @@ redisClient.on('end', () => {
 });
 redisClient.on('error', (err) => {
   console.error('Redis 에러 발생:', err);
-}); 
+});
 
 (async () => {
   try {
@@ -199,7 +198,7 @@ cron.schedule('0 0 1 * *', async () => {
                         } else if (ranking === 2) {
                             rewardPoints = 10000000; // 2등: 10,000,000 포인트
                         } else if (ranking === 3) {
-                            rewardPoints = 3000000;  // 3등: 3000,000 포인트
+                            rewardPoints = 3000000;  // 3등: 300,000 포인트
                         }
 
                 await Promise.all(users.map(user =>
@@ -305,6 +304,8 @@ function queryAsync(query, params = []) {
         });
     });
 }
+
+
 
 // 대회 종료일을 기준으로 7일, 3일, 1일 남았을 때 알림 발송
 cron.schedule('0 0 * * *', async () => {
@@ -485,7 +486,7 @@ app.post('/login', async (req, res) => {
 
     if (results.length > 0) {
       const user = results[0];
-      
+
       // 해시된 비밀번호인지 평문 비밀번호인지 체크하는 로직
       if (user.password.startsWith('$2b$')) {
         // 비밀번호 비교
@@ -531,7 +532,7 @@ app.post('/login', async (req, res) => {
             } catch (err) {
               console.error('Redis 연결 실패:', err);
             }
-            
+
             return res.status(200).json({
               user_id: user.user_id,
               nickname: user.nickname,
@@ -581,7 +582,7 @@ app.post('/login', async (req, res) => {
           } catch (err) {
             console.error('Redis 연결 실패:', err);
           }
-          
+
           return res.status(200).json({
             user_id: user.user_id,
             nickname: user.nickname,
@@ -593,7 +594,7 @@ app.post('/login', async (req, res) => {
           return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
         }
       }
-      
+
     } else {
       console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
       return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
@@ -634,7 +635,7 @@ app.post('/logout', async (req, res) => {
     return res.status(500).json({ message: '로그아웃 실패' });
   }
 });
-         
+
 // get-school-id 엔드포인트
 app.post('/get-school-id', (req, res) => {
   const { userEmail } = req.body;
@@ -873,6 +874,8 @@ app.post('/school-contributions', (req, res) => {
   });
 });
 
+
+
 app.post('/selected-school-contributions', (req, res) => {
   const schoolName = req.body.schoolName;
 
@@ -949,6 +952,105 @@ app.post('/get-user-id', async (req, res) => {
         res.status(200).json({ user_id: results[0].user_id});
         });
 });
+
+
+// 사용자 정보 가져오기
+app.post('/get-user-info', (req, res) => {
+  const { userId } = req.body;
+  console.log('Received userId:', userId);
+
+  const query = `
+      SELECT nickname, school_name, email, profile_image
+      FROM Users
+      WHERE user_id = ?;
+  `;
+
+  db.query(query, [userId], (err, results) => {
+      if (err) {
+          console.error('Error fetching user info:', err);
+          return res.status(500).json({ error: 'Failed to fetch user info' });
+      }
+      console.log('Query result:', results); // 디버깅 로그
+      if (results.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      } else {
+          res.status(200).json({
+              nickname: results[0].nickname,
+              schoolName: results[0].school_name,
+              email: results[0].email,
+              profileImage: results[0].profile_image, // 프로필 이미지 추가
+          });
+      }
+  });
+});
+
+app.post('/update-profile-image', (req, res) => {
+  const { userId, profileImage } = req.body;
+
+  const query = `
+    UPDATE Users
+    SET profile_image = ?
+    WHERE user_id = ?
+  `;
+
+  db.query(query, [profileImage, userId], (err, result) => {
+    if (err) {
+      console.error('Error updating profile image:', err);
+      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
+    } else {
+      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+    }
+  });
+});
+
+
+// 학교 수정
+app.post('/update-school', (req, res) => {
+  const { userId, newSchoolName } = req.body;
+
+  const updateQuery = `
+        UPDATE Users
+        INNER JOIN School ON School.school_name = ?
+        SET Users.school_name = ?, Users.school_id = School.school_id
+        WHERE Users.user_id = ?;
+    `;
+
+  db.query(updateQuery, [newSchoolName, newSchoolName, userId], (err, results) => {
+      if (err) {
+          console.error('Error updating school name:', err);
+          return res.status(500).json({ error: 'Failed to update school name' });
+      }
+      if (results.affectedRows === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+      res.status(200).json({ message: 'School updated successfully' });
+  });
+});
+
+app.post('/getPurchasedProfileIcons', (req, res) => {
+  const { user_id } = req.body;
+
+  // "프로필" 카테고리에 해당하는 구매 아이템 가져오기
+  const query = `
+    SELECT i.item_id, i.category, s.item_name
+    FROM Inventory i
+    JOIN Store s ON i.item_id = s.item_id
+    WHERE i.user_id = ? AND i.category = '프로필'
+  `;
+
+  db.query(query, [user_id], (err, results) => {
+    if (err) {
+      console.error('Error fetching purchased profile icons:', err);
+      res.status(500).json({ message: '프로필 아이템을 가져오는 중 문제가 발생했습니다.' });
+    } else {
+      res.status(200).json({
+        message: '프로필 아이템을 성공적으로 가져왔습니다.',
+        items: results,
+      });
+    }
+  });
+});
+
 
 // 타이머 기록을 계산하는 엔드포인트
 app.post('/calculate-time-and-points', (req, res) => {
@@ -1149,56 +1251,6 @@ app.post('/get-medal-info', (req, res) => {
   });
 });
 
-// 사용자 정보 가져오기
-app.post('/get-user-info', (req, res) => {
-  const { userId } = req.body;
-  console.log('Received userId:', userId);
-
-  const query = `
-      SELECT nickname, school_name
-      FROM Users
-      WHERE user_id = ?;
-  `;
-  db.query(query, [userId], (err, results) => {
-      if (err) {
-          console.error('Error fetching user info:', err);
-          return res.status(500).json({ error: 'Failed to fetch user info' });
-      }
-      console.log('Query result:', results); // 디버깅 로그
-      if (results.length === 0) {
-          return res.status(404).json({ error: 'User not found' });
-      } else {
-          res.status(200).json({
-              nickname: results[0].nickname,
-              schoolName: results[0].school_name,
-          });
-      }
-  });
-});
-
-// 학교 수정
-app.post('/update-school', (req, res) => {
-  const { userId, newSchoolName } = req.body;
-
-  const updateQuery = `
-        UPDATE Users 
-        INNER JOIN School ON School.school_name = ?
-        SET Users.school_name = ?, Users.school_id = School.school_id
-        WHERE Users.user_id = ?;
-    `;
-  
-  db.query(updateQuery, [newSchoolName, newSchoolName, userId], (err, results) => {
-      if (err) {
-          console.error('Error updating school name:', err);
-          return res.status(500).json({ error: 'Failed to update school name' });
-      }
-      if (results.affectedRows === 0) {
-          return res.status(404).json({ error: 'User not found' });
-      }
-      res.status(200).json({ message: 'School updated successfully' });
-  });
-});
-
 // 칠판에 학교명 띄우기
 app.post('/get-user-school-name', (req, res) => {
   const { userId } = req.body;
@@ -1293,6 +1345,27 @@ app.post('/get-school-info', (req, res) => {
   });
 });
 
+app.post('/checkProfileOwnership', (req, res) => {
+  const { user_id, item_id } = req.body;
+
+  // Query to check if the user already owns an item in the "프로필" category
+  const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND category = "프로필" AND item_id = ?';
+  db.query(query, [user_id, item_id], (err, results) => {
+    if (err) {
+      console.error('Error checking profile ownership:', err);
+      res.status(500).json({ message: '서버 오류' });
+    } else {
+      const count = results[0].count;
+      if (count > 0) {
+        // If count > 0, the user already owns a profile item
+        res.status(200).json({ alreadyOwned: true });
+      } else {
+        res.status(200).json({ alreadyOwned: false });
+      }
+    }
+  });
+});
+
 //user의 point를 가져옴.
 app.post('/getUserPoints', (req, res) => {
   const userId = req.body.user_id;
@@ -1342,7 +1415,7 @@ app.post('/getUserItems', (req, res) => {
   }
 
   let query = `
-    SELECT i.inventory_id, s.item_name, i.category, i.acquired_at, i.is_placed
+    SELECT i.inventory_id, s.item_name, i.category, i.acquired_at, i.is_placed, s.item_width, s.item_height
     FROM Inventory i
     JOIN Store s ON i.item_id = s.item_id
     WHERE i.user_id = ?`;
@@ -1363,7 +1436,9 @@ app.post('/getUserItems', (req, res) => {
       item_name: item.item_name,
       category: item.category,
       acquired_at: item.acquired_at,
-      is_placed: item.is_placed
+      is_placed: item.is_placed,
+      item_width: item.item_width,
+      item_height: item.item_height
     }));
 
     res.json({ items });
@@ -1497,7 +1572,6 @@ app.get('/search-user', (req, res) => {
   });
 });
 
-
 app.post('/send-friend-request', (req, res) => {
   const { userId, friendNickname } = req.body;
 
@@ -1558,6 +1632,29 @@ app.post('/send-friend-request', (req, res) => {
         });
       });
     });
+  });
+});
+
+// 친구 삭제
+app.post('/remove-friend', (req, res) => {
+  const { userId, friendId } = req.body;
+
+  const query = `
+    DELETE FROM Friends
+    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+  `;
+
+  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
+    if (err) {
+      console.error('Error rejecting friend request:', err);
+      return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json({ message: '친구가 삭제되었습니다.' });
   });
 });
 
@@ -1729,29 +1826,6 @@ app.get('/friends/:userId', (req, res) => {
   });
 });
 
-// 친구 삭제
-app.post('/remove-friend', (req, res) => {
-  const { userId, friendId } = req.body;
-
-  const query = `
-    DELETE FROM Friends
-    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
-  `;
-
-  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
-    if (err) {
-      console.error('Error rejecting friend request:', err);
-      return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
-    }
-
-    res.status(200).json({ message: '친구가 삭제되었습니다.' });
-  });
-});
-
 // 알림 데이터 가져오기
 app.post('/get-notifications', (req, res) => {
     const { userId } = req.body;
@@ -1843,19 +1917,13 @@ app.post('/get-daily-study-times', async (req, res) => {
         console.error('Error fetching daily study times:', error);
         return res.status(500).json({ error: 'Failed to fetch daily study times.' });
       }
-  
+
       // 결과를 서버 콘솔에 출력
       console.log('Search daily study times results:', results);
-  
+
       // 결과 반환
       res.json(results);
     });
-});
-
-
-// 서버 시작
-app.listen(port, () => {
-    console.log(`Server running at http://116.124.191.174:${port}`);
 });
 app.get('/friends/:userId', (req, res) => {
   const { userId } = req.params;
@@ -1894,6 +1962,79 @@ app.get('/friends/:userId', (req, res) => {
   });
 });
 
+app.post('/change-password', (req, res) => {
+  const { userId, currentPassword, newPassword } = req.body;
+
+  // 1. 사용자 존재 여부 확인 및 비밀번호 가져오기
+  const sql = 'SELECT * FROM Users WHERE user_id = ?';
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('서버 오류:', err);
+      return res.status(500).json({ message: '서버 오류' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    const user = results[0];
+
+    // 2. 현재 비밀번호가 해시된 값인지 평문인지 구분하여 비교
+    if (user.password.startsWith('$2b$')) {
+      // 비밀번호가 해시된 값인 경우
+      bcrypt.compare(currentPassword, user.password, (err, isMatch) => {
+        if (err) {
+          console.error('비밀번호 비교 실패:', err);
+          return res.status(500).json({ message: '서버 오류' });
+        }
+        if (!isMatch) {
+          return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+        }
+
+        // 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
+        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+          if (err) {
+            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
+          }
+
+          // 비밀번호 업데이트 쿼리 실행
+          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
+          db.query(updateSql, [hashedPassword, userId], (err, result) => {
+            if (err) {
+              console.error('비밀번호 업데이트 중 오류 발생:', err);
+              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
+            }
+
+            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+          });
+        });
+      });
+    } else {
+      // 비밀번호가 평문인 경우
+      if (currentPassword === user.password) {
+        // 평문 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
+        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+          if (err) {
+            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
+          }
+
+          // 비밀번호 업데이트 쿼리 실행
+          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
+          db.query(updateSql, [hashedPassword, userId], (err, result) => {
+            if (err) {
+              console.error('비밀번호 업데이트 중 오류 발생:', err);
+              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
+            }
+
+            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+          });
+        });
+      } else {
+        return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+      }
+    }
+  });
+});
+
 app.post('/reset-items-to-bag', async (req, res) => {
   const { user_id } = req.body;
 
@@ -1909,4 +2050,9 @@ app.post('/reset-items-to-bag', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Database query failed' });
   }
+})
+
+// 서버 시작
+app.listen(port, () => {
+    console.log(`Server running at http://116.124.191.174:${port}`);
 })
