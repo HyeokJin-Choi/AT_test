@@ -814,13 +814,13 @@ app.post('/school-contributions', (req, res) => {
       SELECT u.nickname, s.total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
+      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id)
       ORDER BY s.total_time DESC
     ` : `
       SELECT u.nickname, s.monthly_time AS total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
+      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id)
       ORDER BY s.monthly_time DESC
     `;
 
@@ -883,27 +883,43 @@ app.post('/selected-school-contributions', (req, res) => {
     return res.status(400).json({ error: '학교 이름이 필요합니다.' });
   }
 
-
-  const query = `
-    SELECT u.nickname, s.total_time
-    FROM Users u
-    JOIN StudyTimeRecords s ON u.user_id = s.user_id
-    WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
-    ORDER BY s.total_time DESC
+  const schoolIdQuery = `
+  SELECT school_id FROM School WHERE school_name = ?
   `;
 
-  db.query(query, [schoolName], (err, results) => {
+  db.query(schoolIdQuery, [schoolName], (err, schoolResult) => {
     if (err) {
-      console.error('쿼리 오류:', err);
-      return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+        console.error('Error fetching school_id:', err);
+        return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
     }
+  
+    if (schoolResult.length === 0) {
+        return res.status(404).json({ message: '학교 정보를 찾을 수 없습니다.' });
+    }
+  
+    const schoolId = schoolResult[0].school_id;
 
-    res.json({
-      schoolName: schoolName,
-      contributions: results.map(row => ({
-        nickname: row.nickname,
-        total_time: row.total_time
-      }))
+    const query = `
+      SELECT u.nickname, s.total_time
+      FROM Users u
+      JOIN StudyTimeRecords s ON u.user_id = s.user_id
+      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = ?)
+      ORDER BY s.total_time DESC
+    `;
+
+    db.query(query, [schoolId], (err, results) => {
+      if (err) {
+        console.error('쿼리 오류:', err);
+        return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+      }
+
+      res.json({
+        schoolName: schoolName,
+        contributions: results.map(row => ({
+          nickname: row.nickname,
+          total_time: row.total_time
+        }))
+      });
     });
   });
 });
@@ -915,27 +931,43 @@ app.post('/selected-school-competition', (req, res) => {
     return res.status(400).json({ error: '학교 이름이 필요합니다.' });
   }
 
-
-  const query = `
-    SELECT u.nickname, s.monthly_time
-    FROM Users u
-    JOIN StudyTimeRecords s ON u.user_id = s.user_id
-    WHERE u.school_name = ? AND s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id)
-    ORDER BY s.monthly_time DESC
+  const schoolIdQuery = `
+  SELECT school_id FROM School WHERE school_name = ?
   `;
 
-  db.query(query, [schoolName], (err, results) => {
+  db.query(schoolIdQuery, [schoolName], (err, schoolResult) => {
     if (err) {
-      console.error('쿼리 오류:', err);
-      return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+        console.error('Error fetching school_id:', err);
+        return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
     }
 
-    res.json({
-      schoolName: schoolName,
-      contributions: results.map(row => ({
-        nickname: row.nickname,
-        monthly_time: row.monthly_time
-      }))
+    if (schoolResult.length === 0) {
+        return res.status(404).json({ message: '학교 정보를 찾을 수 없습니다.' });
+    }
+
+    const schoolId = schoolResult[0].school_id;
+
+    const query = `
+      SELECT u.nickname, s.monthly_time
+      FROM Users u
+      JOIN StudyTimeRecords s ON u.user_id = s.user_id
+      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = ?)
+      ORDER BY s.monthly_time DESC
+    `;
+
+    db.query(query, [schoolId], (err, results) => {
+      if (err) {
+        console.error('쿼리 오류:', err);
+        return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+      }
+
+      res.json({
+        schoolName: schoolName,
+        contributions: results.map(row => ({
+          nickname: row.nickname,
+          monthly_time: row.monthly_time
+        }))
+      });
     });
   });
 });
