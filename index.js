@@ -1500,7 +1500,7 @@ app.post('/updateItemIsPlaced', (req, res) => {
   // SQL 쿼리 작성 (inventory_id 사용)
   const query = `
     UPDATE Inventory
-    SET is_placed = 1, x = ?, y = ?
+    SET is_placed = 2, x = ?, y = ?
     WHERE inventory_id = ? AND user_id = ?;
   `;
 
@@ -1526,7 +1526,7 @@ app.post('/get-placed-items', (req, res) => {
     SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority, s.item_width, s.item_height, i.is_flipped
     FROM Inventory AS i
     INNER JOIN Store AS s ON i.item_id = s.item_id
-    WHERE i.user_id = ? AND i.is_placed = 1
+    WHERE i.user_id = ? AND i.is_placed IN (1, 2)
   `;
 
   db.query(query, [userId], (err, results) => {
@@ -1544,7 +1544,7 @@ app.post('/remove-item', (req, res) => {
 
   const query = `
     UPDATE Inventory
-    SET is_placed = 0, priority = 0, is_flipped = 0
+    SET is_placed = 3
     WHERE user_id = ? AND inventory_id = ?
   `;
 
@@ -1568,7 +1568,14 @@ app.post('/update-item-position', async (req, res) => {
 
   try {
     await db.query(
-      `UPDATE Inventory SET x = ?, y = ?, priority = ?, is_flipped = ? WHERE user_id = ? AND inventory_id = ? AND is_placed = 1`,
+      `UPDATE Inventory 
+        SET x = ?, y = ?, priority = ?, is_flipped = ?, 
+         is_placed = CASE
+            WHEN is_placed = 3 THEN 0
+            WHEN is_placed = 2 THEN 1
+            ELSE is_placed
+        END 
+        WHERE user_id = ? AND inventory_id = ?`,
       [x, y, priority, is_flipped, user_id, inventory_id]
     );
 
@@ -1576,6 +1583,52 @@ app.post('/update-item-position', async (req, res) => {
   } catch (err) {
     console.error('Error updating item:', err);
     res.status(500).json({ error: 'Failed to update item' }); // 오류 응답
+  }
+});
+
+app.post('/complete-item-position', async (req, res) => {
+  const { user_id } = req.body;
+
+  try {
+    await db.query(
+      `UPDATE Inventory
+      SET is_placed = CASE
+          WHEN is_placed = 3 THEN 0
+          WHEN is_placed = 2 THEN 1
+          ELSE is_placed
+      END
+      WHERE user_id = ? AND is_placed IN (2, 3)
+      `,
+      [user_id]
+    );
+
+    res.json({ message: 'Complete Item successfully' }); // 최종 응답
+    console.log('Complete Item successfully');
+  } catch (err) {
+    console.error('Cannot Complete item:', err);
+    res.status(500).json({ error: 'Failed to complete item' }); // 오류 응답
+  }
+});
+
+app.post('/cancel-item-position', async (req, res) => {
+  const { user_id } = req.body;
+
+  try {
+    await db.query(
+      `UPDATE Inventory
+        SET is_placed = CASE
+            WHEN is_placed = 3 THEN 1
+            WHEN is_placed = 2 THEN 0
+        END
+        WHERE user_id = ? AND is_placed IN (3, 2);
+      `,
+      [user_id]
+    );
+
+    res.json({ message: 'Item cancel successfully' }); // 최종 응답
+  } catch (err) {
+    console.error('Error canceling item:', err);
+    res.status(500).json({ error: 'Failed to cancel item' }); // 오류 응답
   }
 });
 
