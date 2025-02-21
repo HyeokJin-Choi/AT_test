@@ -657,19 +657,23 @@ app.post('/get-school-id', (req, res) => {
   });
 });
 
-// get-school-name 엔드포인트
 app.post('/get-school-name', (req, res) => {
   const { userEmail } = req.body;
 
-  // 쿼리 실행
-  const query = 'SELECT school_name FROM Users WHERE email = ?';
+  // Users 테이블과 School 테이블을 조인하여 school_name 가져오기
+  const query = `
+    SELECT s.school_name 
+    FROM Users u
+    JOIN School s ON u.school_id = s.school_id
+    WHERE u.email = ?`;
+
   db.query(query, [userEmail], (err, results) => {
     if (err) {
       return res.status(500).json({ message: 'Database error', error: err });
     }
 
     if (results.length > 0) {
-      // 이메일에 해당하는 학교 이름이 존재하면 반환
+      // 이메일에 해당하는 학교 이름 반환
       res.status(200).json({ school_name: results[0].school_name });
     } else {
       // 해당하는 사용자 없음
@@ -677,6 +681,7 @@ app.post('/get-school-name', (req, res) => {
     }
   });
 });
+
 
 // 지역 목록을 반환하는 API
 app.get('/school-local', (req, res) => {
@@ -772,13 +777,15 @@ app.get('/school-rankings', (req, res) => {
 });
 
 app.post('/school-contributions', (req, res) => {
-  const userEmail = req.body.userEmail;
-  const isTotalTime = req.body.isTotalTime;  // total_time 또는 monthly_total_time을 구분하는 flag
+  const { userEmail, isTotalTime } = req.body;
   console.log('userEmail:', userEmail, 'isTotalTime:', isTotalTime);
 
-  // 사용자 이메일에 해당하는 school_name과 nickname을 가져오기 위한 쿼리
+  // 사용자 이메일을 기반으로 school_id와 nickname을 가져오는 쿼리
   const schoolQuery = `
-    SELECT school_name, nickname FROM Users WHERE email = ?
+    SELECT u.school_id, u.nickname, s.school_name
+    FROM Users u
+    JOIN School s ON u.school_id = s.school_id
+    WHERE u.email = ?
   `;
 
   db.query(schoolQuery, [userEmail], (error, schoolResults) => {
@@ -792,21 +799,20 @@ app.post('/school-contributions', (req, res) => {
       return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
     }
 
-    const schoolName = schoolResults[0].school_name;
-    const userNickname = schoolResults[0].nickname;
+    const { school_id, school_name, nickname: userNickname } = schoolResults[0];
 
-    if (!schoolName) {
+    if (!school_id) {
       console.log('현재 속한 학교가 없음');
       return res.status(404).json({ message: '현재 속한 학교가 없습니다.' });
     }
 
-    console.log('학교 이름:', schoolName, '사용자 닉네임:', userNickname);
+    console.log('학교 이름:', school_name, '사용자 닉네임:', userNickname);
 
     // 학교의 total_time 또는 monthly_total_time에 따른 쿼리
     const schoolStatsQuery = isTotalTime ? `
-      SELECT total_ranking, total_time FROM School WHERE school_name = ?
+      SELECT total_ranking, total_time FROM School WHERE school_id = ?
     ` : `
-      SELECT monthly_ranking, monthly_total_time FROM School WHERE school_name = ?
+      SELECT monthly_ranking, monthly_total_time FROM School WHERE school_id = ?
     `;
 
     // 기여도 데이터도 total_time 또는 monthly_total_time에 따라 구분
@@ -814,17 +820,21 @@ app.post('/school-contributions', (req, res) => {
       SELECT u.nickname, s.total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id)
+      WHERE s.record_id = (
+        SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
+      ) AND u.school_id = ?
       ORDER BY s.total_time DESC
     ` : `
       SELECT u.nickname, s.monthly_time AS total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id)
+      WHERE s.record_id = (
+        SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
+      ) AND u.school_id = ?
       ORDER BY s.monthly_time DESC
     `;
 
-    db.query(schoolStatsQuery, [schoolName], (statsError, statsResults) => {
+    db.query(schoolStatsQuery, [school_id], (statsError, statsResults) => {
       if (statsError) {
         console.error('학교 기여도 및 통계 쿼리 실행 실패:', statsError);
         return res.status(500).json({ message: '서버 오류' });
@@ -842,7 +852,7 @@ app.post('/school-contributions', (req, res) => {
 
       console.log('학교 순위:', ranking, '총 공부 시간:', total_time);
 
-      db.query(contributionsQuery, [schoolName], (contribError, contribResults) => {
+      db.query(contributionsQuery, [school_id], (contribError, contribResults) => {
         if (contribError) {
           console.error('기여도 쿼리 실행 실패:', contribError);
           return res.status(500).json({ message: '서버 오류' });
@@ -851,7 +861,7 @@ app.post('/school-contributions', (req, res) => {
         if (contribResults.length === 0) {
           console.log('현재 학교에 속한 사용자가 없음');
           return res.status(200).json({
-            schoolName: schoolName,
+            schoolName: school_name,
             ranking: ranking,
             total_time: total_time,
             userNickname: userNickname,
@@ -863,10 +873,10 @@ app.post('/school-contributions', (req, res) => {
         console.log('기여도 결과:', contribResults);
 
         res.status(200).json({
-          schoolName: schoolName,
+          schoolName: school_name,
           ranking: ranking,
           total_time: total_time,
-          userNickname: userNickname, // 추가된 사용자 닉네임
+          userNickname: userNickname,
           contributions: contribResults,
         });
       });
@@ -992,9 +1002,10 @@ app.post('/get-user-info', (req, res) => {
   console.log('Received userId:', userId);
 
   const query = `
-      SELECT nickname, school_name, email, profile_image
-      FROM Users
-      WHERE user_id = ?;
+      SELECT u.nickname, s.school_name, u.email, u.profile_image
+      FROM Users u
+      LEFT JOIN School s ON u.school_id = s.school_id
+      WHERE u.user_id = ?;
   `;
 
   db.query(query, [userId], (err, results) => {
@@ -1008,7 +1019,7 @@ app.post('/get-user-info', (req, res) => {
       } else {
           res.status(200).json({
               nickname: results[0].nickname,
-              schoolName: results[0].school_name,
+              schoolName: results[0].school_name || null, // 학교 정보가 없을 경우 null 반환
               email: results[0].email,
               profileImage: results[0].profile_image, // 프로필 이미지 추가
           });
@@ -1016,24 +1027,6 @@ app.post('/get-user-info', (req, res) => {
   });
 });
 
-app.post('/update-profile-image', (req, res) => {
-  const { userId, profileImage } = req.body;
-
-  const query = `
-    UPDATE Users
-    SET profile_image = ?
-    WHERE user_id = ?
-  `;
-
-  db.query(query, [profileImage, userId], (err, result) => {
-    if (err) {
-      console.error('Error updating profile image:', err);
-      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
-    } else {
-      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
-    }
-  });
-});
 
 
 // 학교 수정
@@ -1294,9 +1287,10 @@ app.post('/get-user-school-name', (req, res) => {
   }
 
   const query = `
-    SELECT school_name
-    FROM Users
-    WHERE user_id = ?
+    SELECT s.school_name
+    FROM Users u
+    LEFT JOIN School s ON u.school_id = s.school_id
+    WHERE u.user_id = ?;
   `;
 
   db.query(query, [userId], (err, results) => {
@@ -1307,7 +1301,7 @@ app.post('/get-user-school-name', (req, res) => {
 
     console.log('Query results:', results);
 
-    if (results.length > 0) {
+    if (results.length > 0 && results[0].school_name) {
       res.status(200).json({ school_name: results[0].school_name });
     } else {
       res.status(404).json({ message: 'School name not found for the user' });
