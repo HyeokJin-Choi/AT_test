@@ -357,6 +357,25 @@ app.post('/update-account-status', (req, res) => {
   });
 });
 
+app.post('/update-profile-image', (req, res) => {
+  const { userId, profileImage } = req.body;
+
+  const query = `
+    UPDATE Users
+    SET profile_image = ?
+    WHERE user_id = ?
+  `;
+
+  db.query(query, [profileImage, userId], (err, result) => {
+    if (err) {
+      console.error('Error updating profile image:', err);
+      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
+    } else {
+      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+    }
+  });
+});
+
 
 // 학교 검색 API
 app.get('/search-schools', (req, res) => {
