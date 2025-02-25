@@ -346,58 +346,112 @@ function getCurrentMonth() {
 app.post('/update-account-status', (req, res) => {
   const { user_id, account_status } = req.body;
 
-  // 데이터베이스에서 사용자 상태 업데이트
-  const query = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
-  db.query(query, [account_status, user_id], (err, result) => {
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 user_id가 필요합니다.' });
+  }
+
+  const allowedStatuses = ['online', 'dormant', 'offline', 'focus']; // 허용된 상태 값
+  if (!allowedStatuses.includes(account_status)) {
+    return res.status(400).json({ message: '유효하지 않은 account_status 값입니다.' });
+  }
+
+  // 사용자가 존재하는지 확인
+  db.query('SELECT user_id FROM Users WHERE user_id = ?', [user_id], (err, results) => {
     if (err) {
-      console.error('Error updating account status:', err);
-      return res.status(500).send('Error updating account status');
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ message: '데이터베이스 오류' });
     }
-    res.status(200).send('Account status updated successfully');
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: '해당 user_id를 찾을 수 없습니다.' });
+    }
+
+    // 사용자 상태 업데이트
+    const query = 'UPDATE Users SET account_status = ? WHERE user_id = ?';
+    db.query(query, [account_status, user_id], (err, result) => {
+      if (err) {
+        console.error('Error updating account status:', err);
+        return res.status(500).json({ message: '사용자 상태 업데이트 중 오류 발생' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: '업데이트할 대상이 없습니다.' });
+      }
+
+      res.status(200).json({ message: '계정 상태가 성공적으로 업데이트되었습니다.' });
+    });
   });
 });
 
 app.post('/update-profile-image', (req, res) => {
   const { userId, profileImage } = req.body;
 
-  const query = `
-    UPDATE Users
-    SET profile_image = ?
-    WHERE user_id = ?
-  `;
-
-  db.query(query, [profileImage, userId], (err, result) => {
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 userId가 필요합니다.' });
+  }
+  if (!profileImage || typeof profileImage !== 'string' || profileImage.trim() === '') {
+    return res.status(400).json({ message: '유효한 프로필 이미지가 필요합니다.' });
+  }
+  // 사용자가 존재하는지 확인
+  db.query('SELECT user_id FROM Users WHERE user_id = ?', [userId], (err, results) => {
     if (err) {
-      console.error('Error updating profile image:', err);
-      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
-    } else {
-      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ message: '데이터베이스 오류' });
     }
+    if (results.length === 0) {
+      return res.status(404).json({ message: '해당 userId를 찾을 수 없습니다.' });
+    }
+    // 사용자 프로필 이미지 업데이트
+    const query = 'UPDATE Users SET profile_image = ? WHERE user_id = ?';
+    db.query(query, [profileImage, userId], (err, result) => {
+      if (err) {
+        console.error('Error updating profile image:', err);
+        return res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: '업데이트할 대상이 없습니다.' });
+      }
+
+      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+    });
   });
 });
 
 
 // 학교 검색 API
 app.get('/search-schools', (req, res) => {
-  const query = req.query.query; // 클라이언트에서 보낸 검색어
+  const query = req.query.query?.trim(); // 클라이언트에서 보낸 검색어 (공백 제거)
 
-  if (!query) {
-    console.log("Query parameter missing."); // 디버깅 메시지
-    return res.status(400).json({ error: 'Query parameter is required.' });
+  // 검색어 검증
+  if (!query || query.length < 2) {
+    console.log("Query parameter missing or too short."); // 디버깅 메시지
+    return res.status(400).json({ error: '검색어는 최소 2자 이상이어야 합니다.' });
   }
 
-  // SQL LIKE 연산자를 사용해 검색
-  const sql = `SELECT school_name, school_address FROM School WHERE school_name LIKE CONCAT('%', ?, '%')`;
-  const searchValue = `${query}`;
+  if (query.length > 50) {
+    console.log("Query parameter too long."); // 디버깅 메시지
+    return res.status(400).json({ error: '검색어가 너무 깁니다. (최대 50자)' });
+  }
+
+  // SQL Injection 방지: escape 처리 + LIKE 검색어 보안 강화
+  const searchValue = `%${query.replace(/[%_]/g, '\\$&')}%`; // '%'와 '_'를 escape
+  const sql = `SELECT school_name, school_address FROM School WHERE school_name LIKE ? ESCAPE '\\'`;
 
   db.query(sql, [searchValue], (err, results) => {
     if (err) {
       console.error('Error fetching schools:', err);
-      return res.status(500).json({ error: 'Failed to fetch schools.' });
+      return res.status(500).json({ error: '학교 목록을 불러오는 중 오류 발생' });
     }
 
-    // 결과를 서버 콘솔에 출력
-    console.log('Search results:', results);
+    if (!Array.isArray(results)) {
+      return res.status(500).json({ error: '잘못된 서버 응답 형식' });
+    }
+
+    // 결과를 서버 콘솔에 출력 (디버깅용)
+    console.log('Search results:', results.length > 0 ? results : "No results found.");
 
     // 결과 반환
     res.json(results);
@@ -411,13 +465,23 @@ app.post('/signup', (req, res) => {
     return res.status(400).json({ message: 'Email, password, nickname, and school_name are required' });
   }
 
-  if (!isValidNickname(nickname)) {
+  // 비밀번호 검증 (최소 8자, 숫자+영문 포함)
+  if (password.length < 8 || !/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+    return res.status(400).json({ message: '비밀번호는 최소 8자 이상이며, 숫자와 영문자를 포함해야 합니다.' });
+  }
+
+  // 닉네임 검증 (공백 제거 후 검사)
+  const trimmedNickname = nickname.trim();
+  if (!isValidNickname(trimmedNickname)) {
     return res.status(400).json({ message: '닉네임은 한글 2~8자, 영문/숫자/특수문자(-,_) 2~14자 사용 가능하며 공백은 사용 불가능합니다.' });
   }
 
-  if (containsBadWords(nickname)) {
+  if (containsBadWords(trimmedNickname)) {
     return res.status(400).json({ message: '닉네임에 비속어는 사용하실 수 없습니다.' });
   }
+
+  // 학교 이름 공백 제거
+  const trimmedSchoolName = school_name.trim();
 
   bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
     if (err) {
@@ -438,7 +502,7 @@ app.post('/signup', (req, res) => {
           return res.status(400).json({ message: '존재하는 아이디입니다.' });
         }
 
-        db.query('SELECT nickname FROM Users WHERE nickname = ?', [nickname], (err, result) => {
+        db.query('SELECT nickname FROM Users WHERE nickname = ?', [trimmedNickname], (err, result) => {
           if (err) {
             db.rollback();
             return res.status(500).json({ message: 'Error checking nickname' });
@@ -448,7 +512,7 @@ app.post('/signup', (req, res) => {
             return res.status(400).json({ message: '존재하는 닉네임입니다.' });
           }
 
-          db.query('SELECT school_id FROM School WHERE school_name = ?', [school_name], (err, result) => {
+          db.query('SELECT school_id FROM School WHERE school_name = ?', [trimmedSchoolName], (err, result) => {
             if (err) {
               db.rollback();
               return res.status(500).json({ message: 'Error checking existing school' });
@@ -462,7 +526,7 @@ app.post('/signup', (req, res) => {
             const school_id = result[0].school_id;
 
             const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'offline', ?)`;
-            db.query(query, [email, hashedPassword, nickname, school_name, school_id], (err, result) => {
+            db.query(query, [email, hashedPassword, trimmedNickname, trimmedSchoolName, school_id], (err, result) => {
               if (err) {
                 db.rollback();
                 return res.status(500).json({ message: 'Error creating user' });
@@ -472,17 +536,19 @@ app.post('/signup', (req, res) => {
 
               db.query(`INSERT INTO StudyTimeRecords (user_id) VALUES (?)`, [userId], (err) => {
                 if (err) {
-                  db.rollback();
-                  return res.status(500).json({ message: 'Error initializing StudyTimeRecords' });
-                }
-
-                db.commit((err) => {
-                  if (err) {
+                  db.query(`DELETE FROM Users WHERE user_id = ?`, [userId], () => { // 실패 시 사용자 삭제
                     db.rollback();
-                    return res.status(500).json({ message: 'Transaction commit error' });
-                  }
-                  res.status(201).json({ message: 'User registered successfully' });
-                });
+                    return res.status(500).json({ message: 'Error initializing StudyTimeRecords' });
+                  });
+                } else {
+                  db.commit((err) => {
+                    if (err) {
+                      db.rollback();
+                      return res.status(500).json({ message: 'Transaction commit error' });
+                    }
+                    res.status(201).json({ message: 'User registered successfully' });
+                  });
+                }
               });
             });
           });
@@ -492,133 +558,93 @@ app.post('/signup', (req, res) => {
   });
 });
 
+
 // 로그인 API
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const query = 'SELECT * FROM Users WHERE email = ?';
-  db.query(query, [email], async (error, results) => {
-    if (error) {
-      console.error('쿼리 실행 실패:', error);
-      return res.status(500).json({ message: '서버 오류' });
+    // 입력 데이터 검증
+    if (!email || !password) {
+      return res.status(400).json({ message: '이메일과 비밀번호를 입력하세요.' });
     }
 
-    if (results.length > 0) {
-      const user = results[0];
-
-      // 해시된 비밀번호인지 평문 비밀번호인지 체크하는 로직
-      if (user.password.startsWith('$2b$')) {
-        // 비밀번호 비교
-        bcrypt.compare(password, user.password, async (err, isMatch) => {
-          if (err) {
-            console.error('비밀번호 비교 실패:', err);
-            return res.status(500).json({ message: '서버 오류' });
-          }
-
-          if (isMatch) {
-            // Redis에서 로그인 상태 확인
-            const userId = user.user_id.toString(); // 키를 문자열로 변환
-            const isLoggedIn = await redisClient.get(userId);
-            if (isLoggedIn) {
-              return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
-            }
-
-            // 마지막 로그인 시간 업데이트
-            const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
-            db.query(updateQuery, [email], (updateError) => {
-              if (updateError) {
-                console.error('마지막 로그인 시간 업데이트 실패:', updateError);
-                return res.status(500).json({ message: '서버 오류' });
-              }
-            });
-
-            try {
-              // Redis 데이터 저장 시
-              const status = 'loggedIn';
-              const result = await redisClient.set(userId, status, { EX: 3600 });
-              console.log(`Redis SET 결과: ${result}`);
-              if (result !== 'OK') {
-                console.error('Redis SET 실패:', userId);
-              }
-              console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
-
-              // 데이터가 제대로 저장되었는지 바로 확인
-              const redisValue = await redisClient.get(userId);
-              console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
-
-              console.log('Redis SET 성공');
-              console.log('로그인 성공:', userId);
-            } catch (err) {
-              console.error('Redis 연결 실패:', err);
-            }
-
-            return res.status(200).json({
-              user_id: user.user_id,
-              nickname: user.nickname,
-              password: user.password,
-              message: '로그인 성공',
-            });
-          } else {
-            console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
-            return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
-          }
-        });
-      } else {
-        // 평문 비밀번호인 경우 (단순 비교)
-        if (password === user.password) {
-          // Redis에서 로그인 상태 확인
-          const userId = user.user_id.toString(); // 키를 문자열로 변환
-          const isLoggedIn = await redisClient.get(userId);
-          if (isLoggedIn) {
-            return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
-          }
-
-          // 마지막 로그인 시간 업데이트
-          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
-          db.query(updateQuery, [email], (updateError) => {
-            if (updateError) {
-              console.error('마지막 로그인 시간 업데이트 실패:', updateError);
-              return res.status(500).json({ message: '서버 오류' });
-            }
-          });
-
-          try {
-            // Redis 데이터 저장 시
-            const status = 'loggedIn';
-            const result = await redisClient.set(userId, status, { EX: 3600 });
-            console.log(`Redis SET 결과: ${result}`);
-            if (result !== 'OK') {
-              console.error('Redis SET 실패:', userId);
-            }
-            console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
-
-            // 데이터가 제대로 저장되었는지 바로 확인
-            const redisValue = await redisClient.get(userId);
-            console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
-
-            console.log('Redis SET 성공');
-            console.log('로그인 성공:', userId);
-          } catch (err) {
-            console.error('Redis 연결 실패:', err);
-          }
-
-          return res.status(200).json({
-            user_id: user.user_id,
-            nickname: user.nickname,
-            password: user.password,
-            message: '로그인 성공',
-          });
-        } else {
-          console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
-          return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
-        }
+    const query = 'SELECT user_id, nickname, password FROM Users WHERE email = ?';
+    db.query(query, [email], async (error, results) => {
+      if (error) {
+        console.error('쿼리 실행 실패:', error);
+        return res.status(500).json({ message: '서버 오류' });
       }
 
-    } else {
-      console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
-      return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
-    }
-  });
+      if (results.length === 0) {
+        console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
+        return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
+      }
+
+      const user = results[0];
+
+      // 비밀번호 해싱 여부 확인
+      const isHashed = user.password.startsWith('$2b$');
+
+      let isMatch;
+      if (isHashed) {
+        isMatch = await bcrypt.compare(password, user.password);
+      } else {
+        // ❌ 평문 비밀번호 비교 제거 (보안 강화)
+        console.warn(`사용자 ${email}의 비밀번호가 해싱되지 않았습니다.`);
+        return res.status(500).json({ message: '비밀번호 보안 문제로 인해 로그인할 수 없습니다.' });
+      }
+
+      if (!isMatch) {
+        console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
+        return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
+      }
+
+      // Redis에서 로그인 상태 확인
+      const userId = user.user_id.toString();
+      try {
+        const isLoggedIn = await redisClient.get(userId);
+        if (isLoggedIn) {
+          return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
+        }
+      } catch (err) {
+        console.error('Redis 상태 확인 실패:', err);
+        return res.status(500).json({ message: '서버 오류' });
+      }
+
+      // 마지막 로그인 시간 업데이트
+      const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE user_id = ?';
+      db.query(updateQuery, [userId], (updateError) => {
+        if (updateError) {
+          console.error('마지막 로그인 시간 업데이트 실패:', updateError);
+          return res.status(500).json({ message: '서버 오류' });
+        }
+      });
+
+      try {
+        // Redis 데이터 저장
+        const status = 'loggedIn';
+        const result = await redisClient.set(userId, status, { EX: 3600 });
+        if (result !== 'OK') {
+          console.error('Redis SET 실패:', userId);
+        }
+
+        console.log(`로그인 성공: user_id=${userId}`);
+        return res.status(200).json({
+          user_id: user.user_id,
+          nickname: user.nickname,
+          message: '로그인 성공',
+        });
+
+      } catch (err) {
+        console.error('Redis 저장 실패:', err);
+        return res.status(500).json({ message: '서버 오류' });
+      }
+    });
+  } catch (err) {
+    console.error('로그인 처리 중 오류 발생:', err);
+    return res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 
@@ -626,58 +652,56 @@ app.post('/login', async (req, res) => {
 app.post('/logout', async (req, res) => {
   const { userId } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ message: '사용자 ID가 필요합니다.' });
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
   }
 
   try {
-    // 데이터베이스 로그아웃 처리
+    // 데이터베이스 로그아웃 처리 (비동기 방식 개선)
     const updateQuery = 'UPDATE Users SET account_status = "offline" WHERE user_id = ?';
-    db.query(updateQuery, [userId], (updateError) => {
-      if (updateError) {
-        console.error('로그아웃 실패', updateError);
-        return res.status(500).json({ message: '서버 오류' });
-      }
+    await new Promise((resolve, reject) => {
+      db.query(updateQuery, [userId], (updateError, result) => {
+        if (updateError) {
+          console.error('로그아웃 실패:', updateError);
+          reject(updateError);
+        } else {
+          resolve(result);
+        }
+      });
     });
 
     // Redis에서 사용자 로그인 상태 제거
-    const result = await redisClient.del(userId.toString());
-    if (result === 1) {
-      console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
-      return res.status(200).json({ message: '로그아웃 성공' });
-    } else {
-      console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
-      return res.status(404).json({ message: '사용자가 로그인되어 있지 않습니다.' });
+    try {
+      const result = await redisClient.del(userId.toString());
+      if (result === 1) {
+        console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
+        return res.status(200).json({ message: '로그아웃 성공' });
+      } else {
+        console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
+        return res.status(404).json({ message: '사용자가 로그인되어 있지 않습니다.' });
+      }
+    } catch (redisError) {
+      console.error('Redis에서 로그아웃 처리 실패:', redisError);
+      return res.status(500).json({ message: 'Redis 처리 중 오류 발생' });
     }
-  } catch (err) {
-    console.error('Redis에서 로그아웃 처리 실패:', err);
-    return res.status(500).json({ message: '로그아웃 실패' });
+
+  } catch (dbError) {
+    return res.status(500).json({ message: '서버 오류: 로그아웃 처리 실패' });
   }
 });
 
-// get-school-id 엔드포인트
-app.post('/get-school-id', (req, res) => {
-  const { userEmail } = req.body;
 
-  // 쿼리 실행
-  const query = 'SELECT school_id FROM Users WHERE email = ?';
-  db.query(query, [userEmail], (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: 'Database error', error: err });
-    }
-
-    if (results.length > 0) {
-      // 이메일에 해당하는 학교 이름이 존재하면 반환
-      res.status(200).json({ school_id: results[0].school_id });
-    } else {
-      // 해당하는 사용자 없음
-      res.status(404).json({ message: 'User not found' });
-    }
-  });
-});
 
 app.post('/get-school-name', (req, res) => {
   const { userEmail } = req.body;
+
+  // 입력 데이터 검증
+  if (!userEmail || typeof userEmail !== 'string' || userEmail.trim() === '') {
+    return res.status(400).json({ message: '유효한 이메일을 입력하세요.' });
+  }
+
+  const trimmedEmail = userEmail.trim();
 
   // Users 테이블과 School 테이블을 조인하여 school_name 가져오기
   const query = `
@@ -686,18 +710,18 @@ app.post('/get-school-name', (req, res) => {
     JOIN School s ON u.school_id = s.school_id
     WHERE u.email = ?`;
 
-  db.query(query, [userEmail], (err, results) => {
+  db.query(query, [trimmedEmail], (err, results) => {
     if (err) {
+      console.error('Database query error:', err);
       return res.status(500).json({ message: 'Database error', error: err });
     }
 
-    if (results.length > 0) {
-      // 이메일에 해당하는 학교 이름 반환
-      res.status(200).json({ school_name: results[0].school_name });
-    } else {
-      // 해당하는 사용자 없음
-      res.status(404).json({ message: 'User not found' });
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    // 정상적인 응답 반환
+    return res.status(200).json({ school_name: results[0].school_name });
   });
 });
 
@@ -708,120 +732,151 @@ app.get('/school-local', (req, res) => {
 
   db.query(query, (err, results) => {
     if (err) {
-      console.error('Error fetching regions: ', err);
-      res.status(500).send('Server error');
-      return;
+      console.error('Error fetching regions:', err);
+      return res.status(500).json({ message: 'Server error', error: err });
     }
 
-    const locals = results.map((row) => row.school_local);
-    res.json(locals);
+    // 결과 데이터 검증
+    const locals = results
+      .map((row) => (row.school_local ? row.school_local.trim() : null))
+      .filter((local) => local !== null && local !== ''); // 빈 값 제거
+
+    if (locals.length === 0) {
+      return res.status(404).json({ message: 'No school regions found' });
+    }
+
+    return res.status(200).json(locals);
   });
 });
 
 app.get('/school-rankings', (req, res) => {
   const { competition, local } = req.query;
 
-  // '지역 대회' 처리
-  if (competition === '지역 대회' && local) {
-      const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
-                    FROM School
-                    WHERE school_local = ? AND monthly_total_time > 0
-                    ORDER BY local_ranking ASC;`;
+  // 입력 데이터 검증
+  if (!competition || typeof competition !== 'string' || competition.trim() === '') {
+    return res.status(400).json({ error: 'Invalid competition parameter' });
+  }
 
-    db.query(query, local, (err, results) => {
+  const trimmedCompetition = competition.trim();
+  const trimmedLocal = local ? local.trim() : null;
+
+  if (trimmedCompetition === '지역 대회') {
+    if (!trimmedLocal) {
+      return res.status(400).json({ error: '지역 대회는 지역명이 필요합니다.' });
+    }
+
+    const query = `
+      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, 
+             monthly_total_time, school_level, school_local
+      FROM School
+      WHERE school_local = ? AND monthly_total_time > 0
+      ORDER BY local_ranking ASC;`;
+
+    db.query(query, [trimmedLocal], (err, results) => {
       if (err) {
-        console.error(err);
+        console.error('지역 대회 SQL 오류:', err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-      console.log('지역 대회');
-      console.log(results);
-      return res.json(results);
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: '해당 지역에 대한 랭킹 데이터가 없습니다.' });
+      }
+
+      return res.status(200).json(results);
     });
   }
 
-  // '전국 대회' 처리
-  else if (competition === '전국 대회') {
-    const query = `WITH RankedSchools AS (
-                           SELECT
-                             school_name,
-                             total_ranking,
-                             monthly_ranking,
-                             local_ranking,
-                             total_time,
-                             monthly_total_time,
-                             school_level,
-                             school_local,
-                             ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
-                           FROM School
-                           WHERE monthly_total_time > 0
-                         )
-                         SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
-                         FROM RankedSchools
-                         WHERE rn <= 3
-                         ORDER BY monthly_total_time DESC;`;
+  else if (trimmedCompetition === '전국 대회') {
+    const query = `
+      WITH RankedSchools AS (
+        SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time,
+               monthly_total_time, school_level, school_local,
+               ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
+        FROM School
+        WHERE monthly_total_time > 0
+      )
+      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time,
+             monthly_total_time, school_level, school_local
+      FROM RankedSchools
+      WHERE rn <= 3
+      ORDER BY monthly_total_time DESC;`;
 
     db.query(query, (err, results) => {
       if (err) {
-        console.error(err);
+        console.error('전국 대회 SQL 오류:', err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
 
-      console.log('전국 대회');
-      console.log(results);
-      return res.json(results); // 월별 총 시간 기준으로 정렬된 지역별 1, 2, 3등 반환
+      if (results.length === 0) {
+        return res.status(404).json({ message: '전국 대회 랭킹 데이터가 없습니다.' });
+      }
+
+      return res.status(200).json(results);
     });
   }
 
-  // '랭킹' 대회 처리
-  else if (competition === '랭킹') {
-    const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
-                   FROM School
-                   WHERE total_time > 0
-                   ORDER BY total_ranking ASC;`;
+  else if (trimmedCompetition === '랭킹') {
+    const query = `
+      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, 
+             monthly_total_time, school_level, school_local
+      FROM School
+      WHERE total_time > 0
+      ORDER BY total_ranking ASC;`;
+
     db.query(query, (err, results) => {
       if (err) {
-        console.error(err);
+        console.error('랭킹 SQL 오류:', err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-      console.log('랭킹');
-      console.log(results);
-      return res.json(results); // 총 시간 기준으로 학교 데이터 반환
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: '전체 랭킹 데이터가 없습니다.' });
+      }
+
+      return res.status(200).json(results);
     });
   }
 
-  // 잘못된 파라미터 처리
   else {
-    return res.status(400).json({ error: 'Invalid competition or missing parameters' });
+    return res.status(400).json({ error: 'Invalid competition type' });
   }
 });
 
 app.post('/school-contributions', (req, res) => {
   const { userEmail, isTotalTime } = req.body;
-  console.log('userEmail:', userEmail, 'isTotalTime:', isTotalTime);
 
-  // 사용자 이메일을 기반으로 school_id와 nickname을 가져오는 쿼리
+  // 입력 데이터 검증
+  if (!userEmail || typeof userEmail !== 'string' || userEmail.trim() === '') {
+    return res.status(400).json({ message: '유효한 이메일을 입력하세요.' });
+  }
+
+  if (typeof isTotalTime !== 'boolean') {
+    return res.status(400).json({ message: 'isTotalTime 값이 잘못되었습니다. (true 또는 false만 허용)' });
+  }
+
+  const trimmedEmail = userEmail.trim();
+
+  // 사용자 이메일을 기반으로 school_id와 nickname 가져오기
   const schoolQuery = `
     SELECT u.school_id, u.nickname, s.school_name
     FROM Users u
     JOIN School s ON u.school_id = s.school_id
-    WHERE u.email = ?
+    WHERE u.email = ?;
   `;
 
-  db.query(schoolQuery, [userEmail], (error, schoolResults) => {
+  db.query(schoolQuery, [trimmedEmail], (error, schoolResults) => {
     if (error) {
       console.error('쿼리 실행 실패:', error);
       return res.status(500).json({ message: '서버 오류' });
     }
 
     if (schoolResults.length === 0) {
-      console.log('사용자를 찾을 수 없음');
       return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
     }
 
     const { school_id, school_name, nickname: userNickname } = schoolResults[0];
 
     if (!school_id) {
-      console.log('현재 속한 학교가 없음');
       return res.status(404).json({ message: '현재 속한 학교가 없습니다.' });
     }
 
@@ -829,9 +884,9 @@ app.post('/school-contributions', (req, res) => {
 
     // 학교의 total_time 또는 monthly_total_time에 따른 쿼리
     const schoolStatsQuery = isTotalTime ? `
-      SELECT total_ranking, total_time FROM School WHERE school_id = ?
+      SELECT total_ranking, total_time FROM School WHERE school_id = ?;
     ` : `
-      SELECT monthly_ranking, monthly_total_time FROM School WHERE school_id = ?
+      SELECT monthly_ranking, monthly_total_time FROM School WHERE school_id = ?;
     `;
 
     // 기여도 데이터도 total_time 또는 monthly_total_time에 따라 구분
@@ -842,7 +897,7 @@ app.post('/school-contributions', (req, res) => {
       WHERE s.record_id = (
         SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
       ) AND u.school_id = ?
-      ORDER BY s.total_time DESC
+      ORDER BY s.total_time DESC;
     ` : `
       SELECT u.nickname, s.monthly_time AS total_time
       FROM Users u
@@ -850,7 +905,7 @@ app.post('/school-contributions', (req, res) => {
       WHERE s.record_id = (
         SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
       ) AND u.school_id = ?
-      ORDER BY s.monthly_time DESC
+      ORDER BY s.monthly_time DESC;
     `;
 
     db.query(schoolStatsQuery, [school_id], (statsError, statsResults) => {
@@ -860,16 +915,13 @@ app.post('/school-contributions', (req, res) => {
       }
 
       if (statsResults.length === 0) {
-        console.log('학교 기여도 및 통계 정보 없음');
-        return res.status(200).json({
+        return res.status(404).json({
           message: '학교 기여도 및 순위 정보가 없습니다.',
         });
       }
 
       const ranking = isTotalTime ? statsResults[0].total_ranking || 0 : statsResults[0].monthly_ranking || 0;
       const total_time = isTotalTime ? statsResults[0].total_time || 0 : statsResults[0].monthly_total_time || 0;
-
-      console.log('학교 순위:', ranking, '총 공부 시간:', total_time);
 
       db.query(contributionsQuery, [school_id], (contribError, contribResults) => {
         if (contribError) {
@@ -878,8 +930,7 @@ app.post('/school-contributions', (req, res) => {
         }
 
         if (contribResults.length === 0) {
-          console.log('현재 학교에 속한 사용자가 없음');
-          return res.status(200).json({
+          return res.status(404).json({
             schoolName: school_name,
             ranking: ranking,
             total_time: total_time,
@@ -889,9 +940,7 @@ app.post('/school-contributions', (req, res) => {
           });
         }
 
-        console.log('기여도 결과:', contribResults);
-
-        res.status(200).json({
+        return res.status(200).json({
           schoolName: school_name,
           ranking: ranking,
           total_time: total_time,
@@ -904,36 +953,42 @@ app.post('/school-contributions', (req, res) => {
 });
 
 
-
 app.post('/selected-school-contributions', (req, res) => {
-  const schoolName = req.body.schoolName;
+  const { schoolName } = req.body;
 
-  if (!schoolName) {
-    return res.status(400).json({ error: '학교 이름이 필요합니다.' });
+  // 입력 데이터 검증
+  if (!schoolName || typeof schoolName !== 'string' || schoolName.trim() === '') {
+    return res.status(400).json({ error: '유효한 학교 이름이 필요합니다.' });
   }
 
+  const trimmedSchoolName = schoolName.trim();
+
   const schoolIdQuery = `
-  SELECT school_id FROM School WHERE school_name = ?
+    SELECT school_id FROM School WHERE school_name = ?
   `;
 
-  db.query(schoolIdQuery, [schoolName], (err, schoolResult) => {
+  db.query(schoolIdQuery, [trimmedSchoolName], (err, schoolResult) => {
     if (err) {
-        console.error('Error fetching school_id:', err);
-        return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
+      console.error('Error fetching school_id:', err);
+      return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
     }
-  
+
     if (schoolResult.length === 0) {
-        return res.status(404).json({ message: '학교 정보를 찾을 수 없습니다.' });
+      return res.status(404).json({ message: '해당 학교 정보를 찾을 수 없습니다.' });
     }
-  
+
     const schoolId = schoolResult[0].school_id;
 
     const query = `
       SELECT u.nickname, s.total_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = ?)
-      ORDER BY s.total_time DESC
+      WHERE s.record_id = (
+        SELECT MAX(record_id) 
+        FROM StudyTimeRecords 
+        WHERE user_id = u.user_id AND school_id = ?
+      )
+      ORDER BY s.total_time DESC;
     `;
 
     db.query(query, [schoolId], (err, results) => {
@@ -942,8 +997,14 @@ app.post('/selected-school-contributions', (req, res) => {
         return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
       }
 
-      res.json({
-        schoolName: schoolName,
+      if (results.length === 0) {
+        return res.status(404).json({
+          message: '해당 학교에 대한 기여도 정보가 없습니다.',
+        });
+      }
+
+      return res.status(200).json({
+        schoolName: trimmedSchoolName,
         contributions: results.map(row => ({
           nickname: row.nickname,
           total_time: row.total_time
@@ -954,24 +1015,27 @@ app.post('/selected-school-contributions', (req, res) => {
 });
 
 app.post('/selected-school-competition', (req, res) => {
-  const schoolName = req.body.schoolName;
+  const { schoolName } = req.body;
 
-  if (!schoolName) {
-    return res.status(400).json({ error: '학교 이름이 필요합니다.' });
+  // 입력 데이터 검증
+  if (!schoolName || typeof schoolName !== 'string' || schoolName.trim() === '') {
+    return res.status(400).json({ error: '유효한 학교 이름이 필요합니다.' });
   }
 
+  const trimmedSchoolName = schoolName.trim();
+
   const schoolIdQuery = `
-  SELECT school_id FROM School WHERE school_name = ?
+    SELECT school_id FROM School WHERE school_name = ?
   `;
 
-  db.query(schoolIdQuery, [schoolName], (err, schoolResult) => {
+  db.query(schoolIdQuery, [trimmedSchoolName], (err, schoolResult) => {
     if (err) {
-        console.error('Error fetching school_id:', err);
-        return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
+      console.error('Error fetching school_id:', err);
+      return res.status(500).json({ message: '학교 정보를 가져오는 중 오류가 발생했습니다.' });
     }
 
     if (schoolResult.length === 0) {
-        return res.status(404).json({ message: '학교 정보를 찾을 수 없습니다.' });
+      return res.status(404).json({ message: '해당 학교 정보를 찾을 수 없습니다.' });
     }
 
     const schoolId = schoolResult[0].school_id;
@@ -980,8 +1044,12 @@ app.post('/selected-school-competition', (req, res) => {
       SELECT u.nickname, s.monthly_time
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
-      WHERE s.record_id = (SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = ?)
-      ORDER BY s.monthly_time DESC
+      WHERE s.record_id = (
+        SELECT MAX(record_id) 
+        FROM StudyTimeRecords 
+        WHERE user_id = u.user_id AND school_id = ?
+      )
+      ORDER BY s.monthly_time DESC;
     `;
 
     db.query(query, [schoolId], (err, results) => {
@@ -990,8 +1058,14 @@ app.post('/selected-school-competition', (req, res) => {
         return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
       }
 
-      res.json({
-        schoolName: schoolName,
+      if (results.length === 0) {
+        return res.status(404).json({
+          message: '해당 학교의 월간 기여도 데이터가 없습니다.',
+        });
+      }
+
+      return res.status(200).json({
+        schoolName: trimmedSchoolName,
         contributions: results.map(row => ({
           nickname: row.nickname,
           monthly_time: row.monthly_time
