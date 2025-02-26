@@ -1353,15 +1353,18 @@ app.post('/get-school-medals', (req, res) => {
 
   db.query(query, [schoolId], (err, results) => {
     if (err) {
-      return res.status(500).json({ error: 'Database error' });
+      console.error('Database error:', err);
+      return res.status(500).json({ error: '데이터베이스 오류가 발생했습니다.' });
     }
-    // 결과 확인을 위한 로그 추가  // 요청한 userId 출력
-        console.log('Fetched Medals:', results);  // 가져온 메달 목록 출력
 
-    // 메달 목록 반환
-    res.json(results);
+    if (results.length === 0) {
+      return res.status(404).json({ error: '해당 학교의 메달 정보를 찾을 수 없습니다.' });
+    }
+
+    return res.status(200).json(results);
   });
 });
+
 
 app.post('/get-medal-info', (req, res) => {
   const { queryType, userId, schoolId, medalId } = req.body;
