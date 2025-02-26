@@ -794,93 +794,77 @@ app.get('/school-local', (req, res) => {
 app.get('/school-rankings', (req, res) => {
   const { competition, local } = req.query;
 
-  // 입력 데이터 검증
-  if (!competition || typeof competition !== 'string' || competition.trim() === '') {
-    return res.status(400).json({ error: 'Invalid competition parameter' });
-  }
+  // '지역 대회' 처리
+  if (competition === '지역 대회' && local) {
+      const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
+                    FROM School
+                    WHERE school_local = ? AND monthly_total_time > 0
+                    ORDER BY local_ranking ASC;`;
 
-  const trimmedCompetition = competition.trim();
-  const trimmedLocal = local ? local.trim() : null;
-
-  if (trimmedCompetition === '지역 대회') {
-    if (!trimmedLocal) {
-      return res.status(400).json({ error: '지역 대회는 지역명이 필요합니다.' });
-    }
-
-    const query = `
-      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, 
-             monthly_total_time, school_level, school_local
-      FROM School
-      WHERE school_local = ? AND monthly_total_time > 0
-      ORDER BY local_ranking ASC;`;
-
-    db.query(query, [trimmedLocal], (err, results) => {
+    db.query(query, local, (err, results) => {
       if (err) {
-        console.error('지역 대회 SQL 오류:', err);
+        console.error(err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-
-      if (results.length === 0) {
-        return res.status(404).json({ message: '해당 지역에 대한 랭킹 데이터가 없습니다.' });
-      }
-
-      return res.status(200).json(results);
+      console.log('지역 대회');
+      console.log(results);
+      return res.json(results);
     });
   }
 
-  else if (trimmedCompetition === '전국 대회') {
-    const query = `
-      WITH RankedSchools AS (
-        SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time,
-               monthly_total_time, school_level, school_local,
-               ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
-        FROM School
-        WHERE monthly_total_time > 0
-      )
-      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time,
-             monthly_total_time, school_level, school_local
-      FROM RankedSchools
-      WHERE rn <= 3
-      ORDER BY monthly_total_time DESC;`;
+  // '전국 대회' 처리
+  else if (competition === '전국 대회') {
+    const query = `WITH RankedSchools AS (
+                           SELECT
+                             school_name,
+                             total_ranking,
+                             monthly_ranking,
+                             local_ranking,
+                             total_time,
+                             monthly_total_time,
+                             school_level,
+                             school_local,
+                             ROW_NUMBER() OVER (PARTITION BY school_local ORDER BY monthly_ranking ASC) AS rn
+                           FROM School
+                           WHERE monthly_total_time > 0
+                         )
+                         SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
+                         FROM RankedSchools
+                         WHERE rn <= 3
+                         ORDER BY monthly_total_time DESC;`;
 
     db.query(query, (err, results) => {
       if (err) {
-        console.error('전국 대회 SQL 오류:', err);
+        console.error(err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
 
-      if (results.length === 0) {
-        return res.status(404).json({ message: '전국 대회 랭킹 데이터가 없습니다.' });
-      }
-
-      return res.status(200).json(results);
+      console.log('전국 대회');
+      console.log(results);
+      return res.json(results); // 월별 총 시간 기준으로 정렬된 지역별 1, 2, 3등 반환
     });
   }
 
-  else if (trimmedCompetition === '랭킹') {
-    const query = `
-      SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, 
-             monthly_total_time, school_level, school_local
-      FROM School
-      WHERE total_time > 0
-      ORDER BY total_ranking ASC;`;
-
+  // '랭킹' 대회 처리
+  else if (competition === '랭킹') {
+    const query = `SELECT school_name, total_ranking, monthly_ranking, local_ranking, total_time, monthly_total_time, school_level, school_local
+                   FROM School
+                   WHERE total_time > 0
+                   ORDER BY total_ranking ASC;`;
     db.query(query, (err, results) => {
       if (err) {
-        console.error('랭킹 SQL 오류:', err);
+        console.error(err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-
-      if (results.length === 0) {
-        return res.status(404).json({ message: '전체 랭킹 데이터가 없습니다.' });
-      }
-
-      return res.status(200).json(results);
+      console.log('랭킹');
+      console.log(results);
+      return res.json(results); // 총 시간 기준으로 학교 데이터 반환
     });
   }
 
+  // 잘못된 파라미터 처리
   else {
-    return res.status(400).json({ error: 'Invalid competition type' });
+    return res.status(400).json({ error: 'Invalid competition or missing parameters' });
   }
 });
 
