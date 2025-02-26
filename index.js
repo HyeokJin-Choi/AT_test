@@ -438,8 +438,8 @@ app.get('/search-schools', (req, res) => {
   }
 
   // SQL Injection 방지: escape 처리 + LIKE 검색어 보안 강화
-  const searchValue = `%${query.replace(/[%_]/g, '\\$&')}%`; // '%'와 '_'를 escape
-  const sql = `SELECT school_name, school_address FROM School WHERE school_name LIKE ? ESCAPE '\\'`;
+  const searchValue = `${query}`;
+  const sql = `SELECT school_name, school_address FROM School WHERE school_name LIKE CONCAT('%', ?, '%')`;
 
   db.query(sql, [searchValue], (err, results) => {
     if (err) {
