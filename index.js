@@ -393,19 +393,29 @@ app.post('/update-profile-image', (req, res) => {
     return res.status(400).json({ message: '유효한 userId가 필요합니다.' });
   }
   
-  const query = `
-    UPDATE Users
-    SET profile_image = ?
-    WHERE user_id = ?
-  `;
-
-  db.query(query, [profileImage, userId], (err, result) => {
+  // 사용자가 존재하는지 확인
+  db.query('SELECT user_id FROM Users WHERE user_id = ?', [userId], (err, results) => {
     if (err) {
-      console.error('Error updating profile image:', err);
-      res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
-    } else {
-      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ message: '데이터베이스 오류' });
     }
+    if (results.length === 0) {
+      return res.status(404).json({ message: '해당 userId를 찾을 수 없습니다.' });
+    }
+    // 사용자 프로필 이미지 업데이트
+    const query = 'UPDATE Users SET profile_image = ? WHERE user_id = ?';
+    db.query(query, [profileImage, userId], (err, result) => {
+      if (err) {
+        console.error('Error updating profile image:', err);
+        return res.status(500).json({ message: '프로필 이미지 업데이트에 실패했습니다.' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: '업데이트할 대상이 없습니다.' });
+      }
+
+      res.status(200).json({ message: '프로필 이미지가 성공적으로 변경되었습니다.' });
+    });
   });
 });
 
