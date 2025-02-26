@@ -1778,27 +1778,27 @@ app.post('/update-item-position', async (req, res) => {
 
   // 입력 데이터 검증
   if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
-    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+    console.log('유효한 사용자 ID가 필요합니다.');
   }
 
   if (!inventory_id || typeof inventory_id !== 'number' || inventory_id <= 0) {
-    return res.status(400).json({ message: '유효한 인벤토리 ID가 필요합니다.' });
+    console.log('유효한 인벤토리 ID가 필요합니다.');
   }
 
   if (x === undefined || y === undefined || typeof x !== 'number' || typeof y !== 'number') {
-    return res.status(400).json({ message: '유효한 x, y 좌표가 필요합니다.' });
+    console.log('유효한 x, y 좌표가 필요합니다.');
   }
 
   if (priority === undefined || typeof priority !== 'number') {
-    return res.status(400).json({ message: '유효한 우선순위(priority)가 필요합니다.' });
+    console.log('유효한 우선순위(priority)가 필요합니다.');
   }
 
-  if (is_flipped === undefined || is_flipped !== 'number') {
-    return res.status(400).json({ message: '유효한 is_flipped 값이 필요합니다.' });
+  if (is_flipped === undefined) {
+    console.log('유효한 is_flipped 값이 필요합니다.');
   }
 
   try {
-    const result = await db.query(
+    await db.query(
       `UPDATE Inventory
         SET x = ?, y = ?, priority = ?, is_flipped = ?,
          is_placed = CASE
@@ -1810,14 +1810,38 @@ app.post('/update-item-position', async (req, res) => {
       [x, y, priority, is_flipped, user_id, inventory_id]
     );
 
-    if (result.affectedRows > 0) {
-      return res.status(200).json({ message: '아이템 위치가 성공적으로 업데이트되었습니다.' });
-    } else {
-      return res.status(404).json({ message: '해당 아이템을 찾을 수 없습니다.' });
-    }
+    res.json({ message: 'Item updated successfully' }); // 최종 응답
   } catch (err) {
     console.error('Error updating item:', err);
     res.status(500).json({ error: 'Failed to update item' }); // 오류 응답
+  }
+});
+
+app.post('/complete-item-position', async (req, res) => {
+  const { user_id } = req.body;
+
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    console.log('유효한 사용자 ID가 필요합니다.');
+  }
+
+  try {
+    await db.query(
+      `UPDATE Inventory
+      SET is_placed = CASE
+          WHEN is_placed = 3 THEN 0
+          WHEN is_placed = 2 THEN 1
+          ELSE is_placed
+      END
+      WHERE user_id = ? AND is_placed IN (2, 3)
+      `,
+      [user_id]
+    );
+
+    res.json({ message: 'Complete Item successfully' }); // 최종 응답
+  } catch (err) {
+    console.error('Cannot Complete item:', err);
+    res.status(500).json({ error: 'Failed to complete item' }); // 오류 응답
   }
 });
 
