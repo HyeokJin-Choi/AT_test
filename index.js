@@ -562,90 +562,131 @@ app.post('/signup', (req, res) => {
 
 // 로그인 API
 app.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // 입력 데이터 검증
-    if (!email || !password) {
-      return res.status(400).json({ message: '이메일과 비밀번호를 입력하세요.' });
+  const query = 'SELECT * FROM Users WHERE email = ?';
+  db.query(query, [email], async (error, results) => {
+    if (error) {
+      console.error('쿼리 실행 실패:', error);
+      return res.status(500).json({ message: '서버 오류' });
     }
 
-    const query = 'SELECT user_id, nickname, password FROM Users WHERE email = ?';
-    db.query(query, [email], async (error, results) => {
-      if (error) {
-        console.error('쿼리 실행 실패:', error);
-        return res.status(500).json({ message: '서버 오류' });
-      }
-
-      if (results.length === 0) {
-        console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
-        return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
-      }
-
+    if (results.length > 0) {
       const user = results[0];
 
-      // 비밀번호 해싱 여부 확인
-      const isHashed = user.password.startsWith('$2b$');
+      // 해시된 비밀번호인지 평문 비밀번호인지 체크하는 로직
+      if (user.password.startsWith('$2b$')) {
+        // 비밀번호 비교
+        bcrypt.compare(password, user.password, async (err, isMatch) => {
+          if (err) {
+            console.error('비밀번호 비교 실패:', err);
+            return res.status(500).json({ message: '서버 오류' });
+          }
 
-      let isMatch;
-      if (isHashed) {
-        isMatch = await bcrypt.compare(password, user.password);
-      } else {
-        // ❌ 평문 비밀번호 비교 제거 (보안 강화)
-        console.warn(`사용자 ${email}의 비밀번호가 해싱되지 않았습니다.`);
-        return res.status(500).json({ message: '비밀번호 보안 문제로 인해 로그인할 수 없습니다.' });
-      }
+          if (isMatch) {
+            // Redis에서 로그인 상태 확인
+            const userId = user.user_id.toString(); // 키를 문자열로 변환
+            const isLoggedIn = await redisClient.get(userId);
+            if (isLoggedIn) {
+              return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
+            }
 
-      if (!isMatch) {
-        console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
-        return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
-      }
+            // 마지막 로그인 시간 업데이트
+            const updateQuery = 'UPDATE Users SET last_login = NOW() WHERE email = ?';
+            db.query(updateQuery, [email], (updateError) => {
+              if (updateError) {
+                console.error('마지막 로그인 시간 업데이트 실패:', updateError);
+                return res.status(500).json({ message: '서버 오류' });
+              }
+            });
 
-      // Redis에서 로그인 상태 확인
-      const userId = user.user_id.toString();
-      try {
-        const isLoggedIn = await redisClient.get(userId);
-        if (isLoggedIn) {
-          return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
-        }
-      } catch (err) {
-        console.error('Redis 상태 확인 실패:', err);
-        return res.status(500).json({ message: '서버 오류' });
-      }
+            try {
+              // Redis 데이터 저장 시
+              const status = 'loggedIn';
+              const result = await redisClient.set(userId, status, { EX: 3600 });
+              console.log(`Redis SET 결과: ${result}`);
+              if (result !== 'OK') {
+                console.error('Redis SET 실패:', userId);
+              }
+              console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
 
-      // 마지막 로그인 시간 업데이트
-      const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE user_id = ?';
-      db.query(updateQuery, [userId], (updateError) => {
-        if (updateError) {
-          console.error('마지막 로그인 시간 업데이트 실패:', updateError);
-          return res.status(500).json({ message: '서버 오류' });
-        }
-      });
+              // 데이터가 제대로 저장되었는지 바로 확인
+              const redisValue = await redisClient.get(userId);
+              console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
 
-      try {
-        // Redis 데이터 저장
-        const status = 'loggedIn';
-        const result = await redisClient.set(userId, status, { EX: 3600 });
-        if (result !== 'OK') {
-          console.error('Redis SET 실패:', userId);
-        }
+              console.log('Redis SET 성공');
+              console.log('로그인 성공:', userId);
+            } catch (err) {
+              console.error('Redis 연결 실패:', err);
+            }
 
-        console.log(`로그인 성공: user_id=${userId}`);
-        return res.status(200).json({
-          user_id: user.user_id,
-          nickname: user.nickname,
-          message: '로그인 성공',
+            return res.status(200).json({
+              user_id: user.user_id,
+              nickname: user.nickname,
+              password: user.password,
+              message: '로그인 성공',
+            });
+          } else {
+            console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
+            return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
+          }
         });
+      } else {
+        // 평문 비밀번호인 경우 (단순 비교)
+        if (password === user.password) {
+          // Redis에서 로그인 상태 확인
+          const userId = user.user_id.toString(); // 키를 문자열로 변환
+          const isLoggedIn = await redisClient.get(userId);
+          if (isLoggedIn) {
+            return res.status(400).json({ message: '이미 로그인된 사용자입니다.' });
+          }
 
-      } catch (err) {
-        console.error('Redis 저장 실패:', err);
-        return res.status(500).json({ message: '서버 오류' });
+          // 마지막 로그인 시간 업데이트
+          const updateQuery = 'UPDATE Users SET last_login = NOW(), account_status = "online" WHERE email = ?';
+          db.query(updateQuery, [email], (updateError) => {
+            if (updateError) {
+              console.error('마지막 로그인 시간 업데이트 실패:', updateError);
+              return res.status(500).json({ message: '서버 오류' });
+            }
+          });
+
+          try {
+            // Redis 데이터 저장 시
+            const status = 'loggedIn';
+            const result = await redisClient.set(userId, status, { EX: 3600 });
+            console.log(`Redis SET 결과: ${result}`);
+            if (result !== 'OK') {
+              console.error('Redis SET 실패:', userId);
+            }
+            console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
+
+            // 데이터가 제대로 저장되었는지 바로 확인
+            const redisValue = await redisClient.get(userId);
+            console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
+
+            console.log('Redis SET 성공');
+            console.log('로그인 성공:', userId);
+          } catch (err) {
+            console.error('Redis 연결 실패:', err);
+          }
+
+          return res.status(200).json({
+            user_id: user.user_id,
+            nickname: user.nickname,
+            password: user.password,
+            message: '로그인 성공',
+          });
+        } else {
+          console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
+          return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
+        }
       }
-    });
-  } catch (err) {
-    console.error('로그인 처리 중 오류 발생:', err);
-    return res.status(500).json({ message: '서버 오류' });
-  }
+
+    } else {
+      console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
+      return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
+    }
+  });
 });
 
 
