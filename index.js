@@ -343,6 +343,7 @@ function getCurrentMonth() {
     return { month, year };
 }
 
+// 혁진 시작
 app.post('/update-account-status', (req, res) => {
   const { user_id, account_status } = req.body;
 
@@ -1074,10 +1075,17 @@ app.post('/selected-school-competition', (req, res) => {
     });
   });
 });
+// 혁진 끝
 
+// 한재 시작
 app.post('/get-user-id', async (req, res) => {
   const { userEmail } = req.body;
   console.log(`Received request for user email: ${userEmail}`);
+
+  // 입력 데이터 검증
+  if (!userEmail || typeof userEmail !== 'string' || userEmail.trim() === '') {
+    return res.status(400).json({ message: '유효한 이메일을 입력하세요.' });
+  }
 
   const query = 'SELECT user_id FROM Users WHERE email = ?';
   db.query(query, [userEmail], (err, results) => {
@@ -1088,11 +1096,15 @@ app.post('/get-user-id', async (req, res) => {
         });
 });
 
-
 // 사용자 정보 가져오기
 app.post('/get-user-info', (req, res) => {
   const { userId } = req.body;
   console.log('Received userId:', userId);
+
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
+  }
 
   const query = `
       SELECT u.nickname, s.school_name, u.email, u.profile_image
@@ -1120,11 +1132,18 @@ app.post('/get-user-info', (req, res) => {
   });
 });
 
-
-
 // 학교 수정
 app.post('/update-school', (req, res) => {
   const { userId, newSchoolName } = req.body;
+
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
+  }
+
+  if (!newSchoolName || typeof newSchoolName !== 'string' || newSchoolName.trim() === '') {
+    return res.status(400).json({ error: '유효한 학교 이름이 필요합니다.' });
+  }
 
   const updateQuery = `
         UPDATE Users
@@ -1148,6 +1167,11 @@ app.post('/update-school', (req, res) => {
 app.post('/getPurchasedProfileIcons', (req, res) => {
   const { user_id } = req.body;
 
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
   // "프로필" 카테고리에 해당하는 구매 아이템 가져오기
   const query = `
     SELECT i.item_id, i.category, s.item_name
@@ -1169,10 +1193,14 @@ app.post('/getPurchasedProfileIcons', (req, res) => {
   });
 });
 
-
 // 타이머 기록을 계산하는 엔드포인트
 app.post('/calculate-time-and-points', (req, res) => {
     const { input_record_time, user_id, start_time, end_time } = req.body;
+
+    // 입력 데이터 검증
+    if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+      return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+    }
 
     if (!input_record_time || !user_id || !start_time || !end_time) {
             return res.status(400).json({ message: 'Input record time, user ID, start time, and end time are required' });
@@ -1267,7 +1295,6 @@ app.post('/calculate-time-and-points', (req, res) => {
     });
 });
 
-
 // 사용자 ID에 해당하는 메달 목록을 가져오는 API
 app.post('/get-user-medals', (req, res) => {
   const { userId } = req.body;
@@ -1291,6 +1318,11 @@ app.post('/get-user-medals', (req, res) => {
 // 사용자 ID에 해당하는 메달 목록을 가져오는 API
 app.post('/get-school-medals', (req, res) => {
   const { schoolId } = req.body;
+
+  // 입력 데이터 검증
+  if (!schoolId || typeof schoolId !== 'number' || schoolId <= 0) {
+    return res.status(400).json({ error: '유효한 학교 ID가 필요합니다.' });
+  }
 
   // userId에 해당하는 메달 목록 가져오기
   const query = `
@@ -1324,6 +1356,10 @@ app.post('/get-medal-info', (req, res) => {
   // Validate input
   if (!queryType || !medalId) {
     return res.status(400).json({ message: 'queryType and medalId are required' });
+  }
+
+  if (typeof medalId !== 'number' || medalId <= 0) {
+    return res.status(400).json({ message: '유효한 medalId가 필요합니다.' });
   }
 
   let query = '';
@@ -1375,8 +1411,9 @@ app.post('/get-user-school-name', (req, res) => {
   console.log(req.body);
   console.log('Received userId:', userId);
 
-  if (!userId) {
-    return res.status(400).json({ message: 'User ID is required' });
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
   }
 
   const query = `
@@ -1406,6 +1443,10 @@ app.post('/get-user-school-name', (req, res) => {
 app.post('/get-user-nickname', (req, res) => {
   const { userId } = req.body;  // 요청 본문에서 userId를 가져옴
 
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
   // userId로 사용자의 닉네임을 데이터베이스에서 조회
   const query = 'SELECT nickname FROM Users WHERE user_id = ?';  // 사용자 테이블에서 닉네임 조회
   db.query(query, [userId], (err, results) => {
@@ -1427,6 +1468,11 @@ app.post('/get-user-nickname', (req, res) => {
 app.post('/get-school-info', (req, res) => {
   const { userId } = req.body;
   console.log(req.body);
+  
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
 
   const query = `
     SELECT
@@ -1463,9 +1509,19 @@ app.post('/get-school-info', (req, res) => {
     }
   });
 });
+// 한재 끝
 
+// 민서 시작
 app.post('/checkProfileOwnership', (req, res) => {
   const { user_id, item_id } = req.body;
+
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+  if (!item_id || typeof item_id !== 'number' || item_id <= 0) {
+    return res.status(400).json({ message: '유효한 아이템 ID가 필요합니다.' });
+  }
 
   // Query to check if the user already owns an item in the "프로필" category
   const query = 'SELECT COUNT(*) AS count FROM Inventory WHERE user_id = ? AND category = "프로필" AND item_id = ?';
@@ -1489,9 +1545,9 @@ app.post('/checkProfileOwnership', (req, res) => {
 app.post('/getUserPoints', (req, res) => {
   const userId = req.body.user_id;
 
-  // Ensure user_id is provided
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID is required' });
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
   }
 
   const query = 'SELECT points FROM Users WHERE user_id = ?';
@@ -1513,6 +1569,17 @@ app.post('/getUserPoints', (req, res) => {
 app.post('/purchaseItem', (req, res) => {
   const { user_id, item_id, item_price } = req.body;
 
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+  if (!item_id || typeof item_id !== 'number' || item_id <= 0) {
+    return res.status(400).json({ message: '유효한 아이템 ID가 필요합니다.' });
+  }
+  if (!item_price || typeof item_price !== 'number' || item_price <= 0) {
+    return res.status(400).json({ message: '유효한 아이템 가격이 필요합니다.' });
+  }
+
   // MySQL 프로시저 호출
   const query = 'CALL purchaseItem(?, ?, ?)';
   db.query(query, [user_id, item_id, item_price], (err, results) => {
@@ -1529,8 +1596,12 @@ app.post('/purchaseItem', (req, res) => {
 app.post('/getUserItems', (req, res) => {
   const { user_id, category } = req.body; // 카테고리도 함께 받아옴
 
-  if (!user_id) {
-    return res.status(400).json({ error: 'user_id is required' });
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
+  }
+  if (category && typeof category !== 'string') {
+    return res.status(400).json({ error: '유효한 카테고리 값이 필요합니다.' });
   }
 
   let query = `
@@ -1564,10 +1635,15 @@ app.post('/getUserItems', (req, res) => {
   });
 });
 
-
 //Store테이블 가져오기
 app.post('/getItemsByCategory', (req, res) => {
   const category = req.body.category;
+
+  // 입력 데이터 검증
+  if (!category || typeof category !== 'string' || category.trim().length === 0) {
+    return res.status(400).json({ error: '유효한 카테고리 값이 필요합니다.' });
+  }
+
   const query = `SELECT item_id, item_name, description, price FROM Store WHERE category = ?`;
 
   db.query(query, [category], (err, results) => {
@@ -1582,7 +1658,16 @@ app.post('/getItemsByCategory', (req, res) => {
 app.post('/updateItemIsPlaced', (req, res) => {
   const { user_id, inventory_id, x, y } = req.body; // inventory_id 받아오기
 
-  console.log('Received request:', { user_id, inventory_id, x, y });
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+  if (!inventory_id || typeof inventory_id !== 'number' || inventory_id <= 0) {
+    return res.status(400).json({ message: '유효한 인벤토리 ID가 필요합니다.' });
+  }
+  if (x === undefined || y === undefined || typeof x !== 'number' || typeof y !== 'number') {
+    return res.status(400).json({ message: '유효한 x, y 좌표가 필요합니다.' });
+  }
 
   // SQL 쿼리 작성 (inventory_id 사용)
   const query = `
@@ -1608,6 +1693,11 @@ app.post('/updateItemIsPlaced', (req, res) => {
 // 배치된 아이템 가져오기 API
 app.post('/get-placed-items', (req, res) => {
   const { userId } = req.body;
+  
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
 
   const query = `
     SELECT i.inventory_id, s.item_name, i.x, i.y, i.category, i.priority, s.item_width, s.item_height, i.is_flipped
@@ -1628,6 +1718,14 @@ app.post('/get-placed-items', (req, res) => {
 // 배치된 아이템 삭제 API
 app.post('/remove-item', (req, res) => {
   const { user_id, inventory_id } = req.body;
+
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+  if (!inventory_id || typeof inventory_id !== 'number' || inventory_id <= 0) {
+    return res.status(400).json({ message: '유효한 인벤토리 ID가 필요합니다.' });
+  }
 
   const query = `
     UPDATE Inventory
@@ -1653,20 +1751,45 @@ app.post('/remove-item', (req, res) => {
 app.post('/update-item-position', async (req, res) => {
   const { user_id, inventory_id, x, y, priority, is_flipped } = req.body;
 
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
+  if (!inventory_id || typeof inventory_id !== 'number' || inventory_id <= 0) {
+    return res.status(400).json({ message: '유효한 인벤토리 ID가 필요합니다.' });
+  }
+
+  if (x === undefined || y === undefined || typeof x !== 'number' || typeof y !== 'number') {
+    return res.status(400).json({ message: '유효한 x, y 좌표가 필요합니다.' });
+  }
+
+  if (priority === undefined || typeof priority !== 'number') {
+    return res.status(400).json({ message: '유효한 우선순위(priority)가 필요합니다.' });
+  }
+
+  if (is_flipped === undefined || is_flipped !== 'number') {
+    return res.status(400).json({ message: '유효한 is_flipped 값이 필요합니다.' });
+  }
+
   try {
-    await db.query(
-      `UPDATE Inventory 
-        SET x = ?, y = ?, priority = ?, is_flipped = ?, 
+    const result = await db.query(
+      `UPDATE Inventory
+        SET x = ?, y = ?, priority = ?, is_flipped = ?,
          is_placed = CASE
             WHEN is_placed = 3 THEN 0
             WHEN is_placed = 2 THEN 1
             ELSE is_placed
-        END 
+        END
         WHERE user_id = ? AND inventory_id = ?`,
       [x, y, priority, is_flipped, user_id, inventory_id]
     );
 
-    res.json({ message: 'Item updated successfully' }); // 최종 응답
+    if (result.affectedRows > 0) {
+      return res.status(200).json({ message: '아이템 위치가 성공적으로 업데이트되었습니다.' });
+    } else {
+      return res.status(404).json({ message: '해당 아이템을 찾을 수 없습니다.' });
+    }
   } catch (err) {
     console.error('Error updating item:', err);
     res.status(500).json({ error: 'Failed to update item' }); // 오류 응답
@@ -1676,8 +1799,13 @@ app.post('/update-item-position', async (req, res) => {
 app.post('/complete-item-position', async (req, res) => {
   const { user_id } = req.body;
 
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
   try {
-    await db.query(
+    const result = await db.query(
       `UPDATE Inventory
       SET is_placed = CASE
           WHEN is_placed = 3 THEN 0
@@ -1689,8 +1817,12 @@ app.post('/complete-item-position', async (req, res) => {
       [user_id]
     );
 
-    res.json({ message: 'Complete Item successfully' }); // 최종 응답
-    console.log('Complete Item successfully');
+    if (result.affectedRows > 0) {
+      console.log(`Complete Item successfully - user_id: ${user_id}`);
+      return res.status(200).json({ message: '아이템 상태가 성공적으로 업데이트되었습니다.' });
+    } else {
+      return res.status(404).json({ message: '업데이트할 아이템이 없습니다.' });
+    }
   } catch (err) {
     console.error('Cannot Complete item:', err);
     res.status(500).json({ error: 'Failed to complete item' }); // 오류 응답
@@ -1699,6 +1831,11 @@ app.post('/complete-item-position', async (req, res) => {
 
 app.post('/cancel-item-position', async (req, res) => {
   const { user_id } = req.body;
+  
+  // 입력 데이터 검증
+  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
 
   try {
     await db.query(
@@ -1712,20 +1849,34 @@ app.post('/cancel-item-position', async (req, res) => {
       [user_id]
     );
 
-    res.json({ message: 'Item cancel successfully' }); // 최종 응답
+    if (result.affectedRows > 0) {
+      console.log(`Item cancel successfully - user_id: ${user_id}`);
+      return res.status(200).json({ message: '아이템 배치가 취소되었습니다.' });
+    } else {
+      return res.status(404).json({ message: '취소할 아이템이 없습니다.' });
+    }
   } catch (err) {
     console.error('Error canceling item:', err);
     res.status(500).json({ error: 'Failed to cancel item' }); // 오류 응답
   }
 });
+// 민서 끝
 
+// 재희 시작
 app.get('/search-user', (req, res) => {
   const { nickname } = req.query;
-  const userId = req.userId;  // 요청 보낸 사용자의 userId (예: 토큰에서 추출)
+  const userId = req.userId; // 요청 보낸 사용자의 userId (예: 토큰에서 추출)
+
+  console.log('Received search request:', { userId, nickname });
+
+  // 입력 데이터 검증
+  if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 14) {
+    return res.status(400).send({ message: '닉네임은 2~14자의 문자열이어야 합니다.' });
+  }
 
   const query = 'SELECT user_id, nickname, profile_image FROM Users WHERE nickname = ?';
 
-  db.query(query, [nickname], (err, rows) => {
+  db.query(query, [nickname.trim()], (err, rows) => {
     if (err) {
       console.error('Error searching user by nickname:', err);
       return res.status(500).send({ message: '사용자를 검색하는 중 오류가 발생했습니다.' });
@@ -1740,295 +1891,352 @@ app.get('/search-user', (req, res) => {
       return res.status(400).send({ message: '자기 자신을 검색할 수 없습니다.' });
     }
 
-    res.status(200).send(rows[0]); // 유저 정보 반환
+    return res.status(200).send(rows[0]); // 유저 정보 반환
   });
 });
 
-app.post('/send-friend-request', (req, res) => {
+
+app.post('/send-friend-request', async (req, res) => {
   const { userId, friendNickname } = req.body;
 
-  const query = 'SELECT user_id FROM Users WHERE nickname = ?';
+  console.log('Received friend request:', { userId, friendNickname });
 
-  db.query(query, [friendNickname], (err, rows) => {
-    if (err) {
-      console.error('Error searching user by nickname:', err);
-      return res.status(500).send({ message: '친구 요청 대상 사용자를 찾을 수 없습니다.' });
-    }
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).send({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
 
-    if (rows.length === 0) {
+  if (!friendNickname || typeof friendNickname !== 'string' || friendNickname.trim().length < 2 || friendNickname.trim().length > 14) {
+    return res.status(400).send({ message: '닉네임은 2~14자의 문자열이어야 합니다.' });
+  }
+
+  try {
+    // 1. 친구 요청 대상 사용자 찾기
+    const userRows = await queryAsync('SELECT user_id FROM Users WHERE nickname = ?', [friendNickname.trim()]);
+
+    if (userRows.length === 0) {
       return res.status(404).send({ message: '친구 요청 대상 사용자를 찾을 수 없습니다.' });
     }
 
-    const friendId = rows[0].user_id;
+    const friendId = userRows[0].user_id;
 
+    // 2. 자기 자신에게 친구 요청 방지
     if (userId === friendId) {
       return res.status(400).send({ message: '자기 자신에게 친구 요청을 보낼 수 없습니다.' });
     }
 
-    const checkRequestQuery = `
-      SELECT * FROM Friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
-    `;
+    // 3. 기존 친구 요청 또는 친구 상태 확인
+    const existingRequest = await queryAsync(
+      `SELECT * FROM Friends
+       WHERE (user_id = ? AND friend_id = ?)
+          OR (user_id = ? AND friend_id = ?)
+          AND status IN ('requested', 'accepted')`,
+      [userId, friendId, friendId, userId]
+    );
 
-    db.query(checkRequestQuery, [userId, friendId, friendId, userId], (err, existingRequest) => {
-      if (err) {
-        console.error('Error checking existing friend request:', err);
-        return res.status(500).send({ message: '친구 요청을 확인하는 중 오류가 발생했습니다.' });
-      }
+    if (existingRequest.length > 0) {
+      return res.status(400).send({ message: '이미 친구 요청이 존재하거나 친구 상태입니다.' });
+    }
 
-      if (existingRequest.length > 0) {
-        return res.status(400).send({ message: '이미 친구 요청이 존재합니다.' });
-      }
+    // 4. 친구 요청 저장
+    const insertResult = await queryAsync(
+      `INSERT INTO Friends (user_id, friend_id, status, created_at, updated_at)
+       VALUES (?, ?, 'requested', NOW(), NOW())`,
+      [userId, friendId]
+    );
 
-      const insertQuery = `
-        INSERT INTO Friends (user_id, friend_id, status, created_at, updated_at)
-        VALUES (?, ?, 'requested', NOW(), NOW())
-      `;
+    if (insertResult.affectedRows === 0) {
+      return res.status(500).send({ message: '친구 요청을 보내는 중 오류가 발생했습니다.' });
+    }
 
-      db.query(insertQuery, [userId, friendId], (err, result) => {
-        if (err) {
-          console.error('Error sending friend request:', err);
-          return res.status(500).send({ message: '친구 요청을 보내는 중 오류가 발생했습니다.' });
-        }
+    // 5. 친구 요청 알림 생성
+    await queryAsync(
+      `CALL CreateNotification(?, '새로운 친구 요청', '새로운 친구 요청이 있습니다.', 'friend_request')`,
+      [friendId]
+    );
 
-        // 친구 요청 성공 시 알림 생성
-        const notificationQuery = `
-          CALL CreateNotification(?, '새로운 친구 요청', '새로운 친구 요청이 있습니다.', 'friend_request')
-        `;
-        db.query(notificationQuery, [friendId], (err, notificationResult) => {
-          if (err) {
-            console.error('Error creating notification:', err);
-            return res.status(500).send({ message: '알림 생성 중 오류가 발생했습니다.' });
-          }
+    return res.status(200).send({ message: '친구 요청이 성공적으로 전송되었습니다.' });
 
-          res.status(200).send({ message: '친구 요청이 성공적으로 전송되었습니다.' });
-        });
-      });
-    });
-  });
+  } catch (err) {
+    console.error('Error sending friend request:', err);
+    return res.status(500).send({ message: '친구 요청을 보내는 중 오류가 발생했습니다.' });
+  }
 });
+
 
 // 친구 삭제
-app.post('/remove-friend', (req, res) => {
+app.post('/remove-friend', async (req, res) => {
   const { userId, friendId } = req.body;
 
-  const query = `
-    DELETE FROM Friends
-    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
-  `;
+  console.log('Received remove friend request:', { userId, friendId });
 
-  db.query(query, [userId, friendId, friendId, userId], (err, result) => {
-    if (err) {
-      console.error('Error rejecting friend request:', err);
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
+  if (!friendId || typeof friendId !== 'number' || friendId <= 0) {
+    return res.status(400).json({ message: '유효한 친구 ID가 필요합니다.' });
+  }
+
+  if (userId === friendId) {
+    return res.status(400).json({ message: '자기 자신을 친구에서 삭제할 수 없습니다.' });
+  }
+
+  try {
+    // 1. 친구 관계 확인 (accepted 상태인지 검증)
+    const friendCheck = await queryAsync(
+      `SELECT * FROM Friends
+       WHERE (user_id = ? AND friend_id = ?)
+          OR (user_id = ? AND friend_id = ?)
+          AND status = 'accepted'`,
+      [userId, friendId, friendId, userId]
+    );
+
+    if (friendCheck.length === 0) {
+      return res.status(404).json({ message: '친구 관계를 찾을 수 없습니다.' });
+    }
+
+    // 2. 친구 삭제
+    const deleteResult = await queryAsync(
+      `DELETE FROM Friends
+       WHERE (user_id = ? AND friend_id = ?)
+          OR (user_id = ? AND friend_id = ?)`,
+      [userId, friendId, friendId, userId]
+    );
+
+    if (deleteResult.affectedRows > 0) {
+      console.log(`Friend removed successfully - userId: ${userId}, friendId: ${friendId}`);
+      return res.status(200).json({ message: '친구가 성공적으로 삭제되었습니다.' });
+    } else {
       return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
     }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
-    }
-
-    res.status(200).json({ message: '친구가 삭제되었습니다.' });
-  });
+  } catch (err) {
+    console.error('Error removing friend:', err);
+    return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
+  }
 });
+
 
 
 // 친구 요청 목록 가져오기
-app.get('/friend-requests/:userId', (req, res) => {
-  const userId = req.params.userId;
+app.get('/friend-requests/:userId', async (req, res) => {
+  const userId = Number(req.params.userId);
 
-  const query = `
+  console.log('Received request for friend requests - userId:', userId);
+
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
+  try {
+    const query = `
       SELECT f.friendship_id, f.user_id, f.friend_id, u.nickname, u.profile_image
       FROM Friends f
       JOIN Users u ON f.user_id = u.user_id
       WHERE f.friend_id = ? AND f.status = 'requested'
     `;
 
-  db.query(query, [userId], (err, rows) => {
-    if (err) {
-      console.error('Error fetching friend requests:', err);
-      return res.status(500).json({ message: '친구 요청을 가져오는 중 오류가 발생했습니다.' });
-    }
+    const rows = await queryAsync(query, [userId]);
 
-    if (rows.length === 0) {
-      return res.status(200).json([]);  // 요청 목록이 없으면 빈 배열 반환
-    }
+    if (!rows || rows.length === 0) {
+          return res.status(200).json([]); // 친구 목록이 비어 있으면 빈 배열 반환
+        }
 
-    res.status(200).json(rows);  // 친구 요청 목록 반환
-  });
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('Error fetching friend requests:', err);
+    return res.status(500).json({ message: '친구 요청을 가져오는 중 오류가 발생했습니다.' });
+  }
 });
 
 
+
 // 친구 요청 수락
-app.post('/accept-friend-request', (req, res) => {
+
+app.post('/accept-friend-request', async (req, res) => {
   const { friendshipId } = req.body;
 
-  // 1. 친구 요청 수락 상태로 업데이트
-  const query = `
-    UPDATE Friends
-    SET status = 'accepted'
-    WHERE friendship_id = ? AND status = 'requested'
-  `;
+  console.log('Received accept friend request:', { friendshipId });
 
-  db.query(query, [friendshipId], (err, result) => {
-    if (err) {
-      console.error('Error accepting friend request:', err);
-      return res.status(500).json({ message: '친구 요청 수락 중 오류가 발생했습니다.' });
-    }
+  // 입력 데이터 검증
+  if (!friendshipId || typeof friendshipId !== 'number' || friendshipId <= 0) {
+    return res.status(400).json({ message: '유효한 친구 요청 ID가 필요합니다.' });
+  }
 
-    if (result.affectedRows === 0) {
+  try {
+    // 1. 친구 요청 수락 상태로 업데이트
+    const updateResult = await queryAsync(
+      `UPDATE Friends
+       SET status = 'accepted'
+       WHERE friendship_id = ? AND status = 'requested'`,
+      [friendshipId]
+    );
+
+    if (updateResult.affectedRows === 0) {
       return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
     }
 
     // 2. friendship_id를 통해 요청 보낸 user_id 및 상대방 friend_id 가져오기
-    const getUserIdQuery = `
-      SELECT user_id, friend_id FROM Friends
-      WHERE friendship_id = ?
-    `;
+    const userResult = await queryAsync(
+      `SELECT user_id, friend_id FROM Friends
+       WHERE friendship_id = ?`,
+      [friendshipId]
+    );
 
-    db.query(getUserIdQuery, [friendshipId], (err, userResult) => {
-      if (err) {
-        console.error('Error fetching user_id and friend_id:', err);
-        return res.status(500).json({ message: '사용자 정보를 가져오는 중 오류가 발생했습니다.' });
-      }
+    if (userResult.length === 0) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
 
-      if (userResult.length === 0) {
-        return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-      }
+    const requesterId = userResult[0].user_id; // 요청 보낸 사람
+    const accepterId = userResult[0].friend_id; // 요청을 수락한 사람
 
-      const requesterId = userResult[0].user_id; // 요청 보낸 사람
-      const accepterId = userResult[0].friend_id; // 요청을 수락한 사람
+    // 3. 요청을 수락한 사용자의 nickname 가져오기
+    const nicknameResult = await queryAsync(
+      `SELECT nickname FROM Users
+       WHERE user_id = ?`,
+      [accepterId]
+    );
 
-      // 3. 요청을 수락한 사용자의 nickname 가져오기
-      const getNicknameQuery = `
-        SELECT nickname FROM Users
-        WHERE user_id = ?
-      `;
+    if (nicknameResult.length === 0) {
+      return res.status(404).json({ message: '닉네임을 찾을 수 없습니다.' });
+    }
 
-      db.query(getNicknameQuery, [accepterId], (err, nicknameResult) => {
-        if (err) {
-          console.error('Error fetching nickname:', err);
-          return res.status(500).json({ message: '닉네임 정보를 가져오는 중 오류가 발생했습니다.' });
-        }
+    const accepterNickname = nicknameResult[0].nickname;
 
-        if (nicknameResult.length === 0) {
-          return res.status(404).json({ message: '닉네임을 찾을 수 없습니다.' });
-        }
+    // 4. 친구 요청 수락 알림 생성 (nickname 포함)
+    const notificationMessage = `${accepterNickname} 님이 친구 요청을 수락했습니다!`;
+    await queryAsync(
+      `CALL CreateNotification(?, '친구 요청 수락', ?, 'friend_request')`,
+      [requesterId, notificationMessage]
+    );
 
-        const accepterNickname = nicknameResult[0].nickname;
+    return res.status(200).send({ message: '친구 요청이 성공적으로 수락되었습니다.' });
 
-        // 4. 친구 요청 수락 알림 생성 (nickname 포함)
-        const notificationMessage = `${accepterNickname} 님이 친구 요청을 수락했습니다!`;
-        const notificationQuery = `
-          CALL CreateNotification(?, '친구 요청 수락', ?, 'friend_request')
-        `;
-
-        db.query(notificationQuery, [requesterId, notificationMessage], (err, notificationResult) => {
-          if (err) {
-            console.error('Error creating notification:', err);
-            return res.status(500).send({ message: '알림 생성 중 오류가 발생했습니다.' });
-          }
-
-          // 5. 응답 전송
-          res.status(200).send({ message: '친구 요청이 성공적으로 수락되었습니다.' });
-        });
-      });
-    });
-  });
+  } catch (err) {
+    console.error('Error accepting friend request:', err);
+    return res.status(500).send({ message: '친구 요청 수락 중 오류가 발생했습니다.' });
+  }
 });
-
 
 
 // 친구 요청 거절
-app.post('/reject-friend-request', (req, res) => {
+app.post('/reject-friend-request', async (req, res) => {
   const { friendshipId } = req.body;
 
-  const query = `
-    DELETE FROM Friends
-    WHERE friendship_id = ? AND status = 'requested'
-  `;
+  console.log('Received reject friend request:', { friendshipId });
 
-  db.query(query, [friendshipId], (err, result) => {
-    if (err) {
-      console.error('Error rejecting friend request:', err);
-      return res.status(500).json({ message: '친구 요청 거절 중 오류가 발생했습니다.' });
-    }
+  // 입력 데이터 검증
+  if (!friendshipId || typeof friendshipId !== 'number' || friendshipId <= 0) {
+    return res.status(400).json({ message: '유효한 친구 요청 ID가 필요합니다.' });
+  }
 
-    if (result.affectedRows === 0) {
+  try {
+    // 1. 친구 요청 거절 (Friends 테이블에서 삭제)
+    const deleteResult = await queryAsync(
+      `DELETE FROM Friends
+       WHERE friendship_id = ? AND status = 'requested'`,
+      [friendshipId]
+    );
+
+    if (deleteResult.affectedRows === 0) {
       return res.status(404).json({ message: '해당 친구 요청을 찾을 수 없습니다.' });
     }
 
-    res.status(200).json({ message: '친구 요청이 거절되었습니다.' });
-  });
+    return res.status(200).json({ message: '친구 요청이 성공적으로 거절되었습니다.' });
+
+  } catch (err) {
+    console.error('Error rejecting friend request:', err);
+    return res.status(500).json({ message: '친구 요청 거절 중 오류가 발생했습니다.' });
+  }
 });
 
-app.get('/friends/:userId', (req, res) => {
-  const { userId } = req.params;
 
-  const query = `
-    SELECT
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END AS friend_id,
-      u.nickname,
-      u.account_status,
-      u.profile_image
-    FROM Friends f
-    JOIN Users u ON u.user_id = (
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END
-    )
-    WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
-  `;
+app.get('/friends/:userId', async (req, res) => {
+  const userId = Number(req.params.userId);
 
-  db.query(query, [userId, userId, userId, userId], (err, results) => {
-    if (err) {
-      console.error('Error fetching friends:', err);
-      return res.status(500).json({ message: '친구 목록을 가져오는 중 오류가 발생했습니다.' });
-    }
+  console.log('Received request for friends list - userId:', userId);
 
-    // 결과가 비어 있을 경우 처리
-    if (!results || results.length === 0) {
-      return res.status(404).json({ message: '친구 목록이 비어 있습니다.' });
-    }
+  // 입력 데이터 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
 
-    // 정상적인 결과 반환
-    res.status(200).json(results);
-  });
-});
-
-// 알림 데이터 가져오기
-app.post('/get-notifications', (req, res) => {
-    const { userId } = req.body;
-
-    if (!userId) {
-        return res.status(400).json({ error: 'User ID is required' });
-    }
-
+  try {
     const query = `
-        SELECT notification_id, title, message, type, is_read, created_at
-        FROM Notifications
-        WHERE user_id = ?
-        ORDER BY created_at DESC
+      SELECT
+        CASE
+          WHEN f.user_id = ? THEN f.friend_id
+          ELSE f.user_id
+        END AS friend_id,
+        u.nickname,
+        u.account_status,
+        u.profile_image
+      FROM Friends f
+      JOIN Users u ON u.user_id = (
+        CASE
+          WHEN f.user_id = ? THEN f.friend_id
+          ELSE f.user_id
+        END
+      )
+      WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
     `;
 
-    db.query(query, [userId], (error, results) => {
-        if (error) {
-            console.error('Error fetching notifications:', error);
-            return res.status(500).json({ error: 'Database query error' });
+    const results = await queryAsync(query, [userId, userId, userId, userId]);
+
+    if (!results || results.length === 0) {
+      return res.status(200).json([]); // 친구 목록이 비어 있으면 빈 배열 반환
+    }
+
+    return res.status(200).json(results);
+  } catch (err) {
+    console.error('Error fetching friends:', err);
+    return res.status(500).json({ message: '친구 목록을 가져오는 중 오류가 발생했습니다.' });
+  }
+});
+
+
+// 알림 데이터 가져오기
+app.post('/get-notifications', async (req, res) => {
+    const { userId } = req.body;
+
+    console.log('Received request for notifications - userId:', userId);
+
+    // 입력 데이터 검증
+    if (!userId || typeof userId !== 'number' || userId <= 0) {
+        return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
+    }
+
+    try {
+        const query = `
+            SELECT notification_id, title, message, type, is_read, created_at
+            FROM Notifications
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        `;
+
+        const results = await queryAsync(query, [userId]);
+
+        if (!results || results.length === 0) {
+            return res.status(200).json([]); // 알림이 없을 경우 빈 배열 반환
         }
-        res.status(200).json(results);
-    });
+
+        return res.status(200).json(results);
+    } catch (err) {
+        console.error('Error fetching notifications:', err);
+        return res.status(500).json({ error: '알림 데이터를 가져오는 중 오류가 발생했습니다.' });
+    }
 });
 
 // POST /get-notifications
 app.post('/get-notifications', async (req, res) => {
     const { userId, includeRead } = req.body;
 
-    if (!userId) {
-        return res.status(400).json({ error: "Missing userId in request body" });
-    }
+    // 입력 데이터 검증
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            return res.status(400).json({ error: '유효한 사용자 ID가 필요합니다.' });
+        }
 
     try {
         const connection = await mysql.createConnection(dbConfig);
@@ -2075,136 +2283,125 @@ app.post('/mark-notification-read', (req, res) => {
 
 // 일별 공부 시간 가져오기 API
 app.post('/get-daily-study-times', async (req, res) => {
-    const { userId } = req.body;
+  const { userId } = req.body;
 
-    // 입력 검증
-    if (!userId) {
-      console.log("user_id  missing."); // 디버깅 메시지
-        return res.status(400).json({ error: 'userId is required.' });
-    }
+  // 입력 검증
+  if (!userId || typeof userId !== 'number' || userId <= 0) {
+      console.log("userId가 유효하지 않음:", userId);
+      return res.status(400).json({ error: '유효한 userId가 필요합니다.' });
+  }
 
-    const sql =  `SELECT record_date, daily_time FROM StudyTimeRecords WHERE user_id = ?`;
-    db.query(sql, [userId], (err, results) => {
-      if (err) {
-        console.error('Error fetching daily study times:', error);
-        return res.status(500).json({ error: 'Failed to fetch daily study times.' });
+  try {
+      const sql = `SELECT record_date, daily_time FROM StudyTimeRecords WHERE user_id = ?`;
+      const results = await queryAsync(sql, [userId]);
+
+      if (results.length === 0) {
+          console.log("⚠️ 일별 공부 시간 데이터 없음:", userId);
+          return res.status(404).json({ error: '일별 공부 기록이 없습니다.' });
       }
 
-      // 결과를 서버 콘솔에 출력
-      console.log('Search daily study times results:', results);
-
-      // 결과 반환
-      res.json(results);
-    });
+      console.log("Search daily study times results:", results);
+      return res.json(results);
+  } catch (err) {
+      console.error("Error fetching daily study times:", err);
+      return res.status(500).json({ error: '일별 공부 시간을 가져오는 중 오류가 발생했습니다.' });
+  }
 });
-app.get('/friends/:userId', (req, res) => {
-  const { userId } = req.params;
 
-  const query = `
-    SELECT
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END AS friend_id,
-      u.nickname,
-      u.account_status
-    FROM Friends f
-    JOIN Users u ON u.user_id = (
-      CASE
-        WHEN f.user_id = ? THEN f.friend_id
-        ELSE f.user_id
-      END
-    )
-    WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
-  `;
+app.get('/friends/:userId', async (req, res) => {
+  let { userId } = req.params;
 
-  db.query(query, [userId, userId, userId, userId], (err, results) => {
-    if (err) {
-      console.error('Error fetching friends:', err);
+  // 입력 검증
+  if (!userId || typeof userId !== 'number' || !/^\d+$/.test(userId)) {
+      console.log("Invalid userId:", userId);
+      return res.status(400).json({ error: '유효한 userId가 필요합니다.' });
+  }
+
+  try {
+      const query = `
+          SELECT
+              CASE
+                  WHEN f.user_id = ? THEN f.friend_id
+                  ELSE f.user_id
+              END AS friend_id,
+              u.nickname,
+              u.account_status
+          FROM Friends f
+          JOIN Users u ON u.user_id = (
+              CASE
+                  WHEN f.user_id = ? THEN f.friend_id
+                  ELSE f.user_id
+              END
+          )
+          WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
+      `;
+
+      const results = await queryAsync(query, [userId, userId, userId, userId]);
+
+      if (results.length === 0) {
+          return res.status(404).json({ message: '친구 목록이 비어 있습니다.' });
+      }
+
+      return res.status(200).json(results);
+  } catch (err) {
+      console.error("Error fetching friends:", err);
       return res.status(500).json({ message: '친구 목록을 가져오는 중 오류가 발생했습니다.' });
-    }
-
-    // 결과가 비어 있을 경우 처리
-    if (!results || results.length === 0) {
-      return res.status(404).json({ message: '친구 목록이 비어 있습니다.' });
-    }
-
-    // 정상적인 결과 반환
-    res.status(200).json(results);
-  });
+  }
 });
 
-app.post('/change-password', (req, res) => {
-  const { userId, currentPassword, newPassword } = req.body;
 
-  // 1. 사용자 존재 여부 확인 및 비밀번호 가져오기
-  const sql = 'SELECT * FROM Users WHERE user_id = ?';
-  db.query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('서버 오류:', err);
-      return res.status(500).json({ message: '서버 오류' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+app.post('/change-password', async (req, res) => {
+    const { userId, currentPassword, newPassword } = req.body;
+
+    // **1️⃣ 입력값 검증 (userId, currentPassword, newPassword)**
+    if (!userId || !currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'userId, currentPassword, newPassword는 필수 입력값입니다.' });
     }
 
-    const user = results[0];
 
-    // 2. 현재 비밀번호가 해시된 값인지 평문인지 구분하여 비교
-    if (user.password.startsWith('$2b$')) {
-      // 비밀번호가 해시된 값인 경우
-      bcrypt.compare(currentPassword, user.password, (err, isMatch) => {
-        if (err) {
-          console.error('비밀번호 비교 실패:', err);
-          return res.status(500).json({ message: '서버 오류' });
-        }
-        if (!isMatch) {
-          return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+    try {
+        // **4️⃣ 사용자 존재 여부 및 비밀번호 조회**
+        const sql = 'SELECT password FROM Users WHERE user_id = ?';
+        const results = await queryAsync(sql, [userId]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         }
 
-        // 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
-        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
-          if (err) {
-            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
-          }
+        const user = results[0];
 
-          // 비밀번호 업데이트 쿼리 실행
-          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
-          db.query(updateSql, [hashedPassword, userId], (err, result) => {
-            if (err) {
-              console.error('비밀번호 업데이트 중 오류 발생:', err);
-              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
+        // **5️⃣ 비밀번호 검증 (해싱된 경우와 평문 비밀번호 처리)**
+        const isHashed = user.password.startsWith('$2b$');
+
+        if (isHashed) {
+            // bcrypt 해싱된 비밀번호 비교
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if (!isMatch) {
+                return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
             }
+        } else {
+            // 평문 비밀번호가 저장된 경우 → 강제 로그아웃 유도
+            console.warn(`보안 경고: userId ${userId}가 해싱되지 않은 비밀번호를 사용 중.`);
+            return res.status(403).json({
+                message: '보안 문제로 인해 비밀번호를 변경할 수 없습니다. 관리자에게 문의하세요.'
+            });
+        }
 
-            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-          });
-        });
-      });
-    } else {
-      // 비밀번호가 평문인 경우
-      if (currentPassword === user.password) {
-        // 평문 비밀번호 일치 -> 새로운 비밀번호 해싱 및 저장
-        bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
-          if (err) {
-            return res.status(500).json({ message: '비밀번호 해싱 중 오류 발생' });
-          }
+        // 비밀번호 검증 (최소 8자, 숫자+영문 포함)
+              if (newPassword.length < 8 || !/\d/.test(newPassword) || !/[a-zA-Z]/.test(newPassword)) {
+                return res.status(400).json({ message: '비밀번호는 최소 8자 이상이며, 숫자와 영문자를 포함해야 합니다.' });
+              }
 
-          // 비밀번호 업데이트 쿼리 실행
-          const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
-          db.query(updateSql, [hashedPassword, userId], (err, result) => {
-            if (err) {
-              console.error('비밀번호 업데이트 중 오류 발생:', err);
-              return res.status(500).json({ message: '비밀번호 업데이트 중 오류 발생' });
-            }
+        // **6️⃣ 새로운 비밀번호 해싱 및 저장**
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        const updateSql = 'UPDATE Users SET password = ? WHERE user_id = ?';
+        await queryAsync(updateSql, [hashedPassword, userId]);
 
-            return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-          });
-        });
-      } else {
-        return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
-      }
+        return res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+    } catch (err) {
+        console.error('비밀번호 변경 중 오류 발생:', err);
+        return res.status(500).json({ message: '비밀번호 변경 중 오류가 발생했습니다.' });
     }
-  });
 });
 
 app.post('/reset-items-to-bag', async (req, res) => {
@@ -2215,14 +2412,18 @@ app.post('/reset-items-to-bag', async (req, res) => {
   }
 
   try {
+
     const query = 'UPDATE Inventory SET is_placed = 0 WHERE user_id = ?';
-    await db.query(query, [user_id]);
+    const result = await queryAsync(query, [user_id]);
+
     res.status(200).json({ message: 'Items reset to bag successfully' });
+
   } catch (err) {
-    console.error(err);
+    console.error('Error resetting items to bag:', err);
     res.status(500).json({ error: 'Database query failed' });
   }
-})
+});
+// 재희 끝
 
 // 서버 시작
 app.listen(port, () => {
