@@ -1431,7 +1431,6 @@ app.post('/get-medal-info', (req, res) => {
   });
 });
 
-// 칠판에 학교명 띄우기
 app.post('/get-user-school-name', (req, res) => {
   const { userId } = req.body;
   console.log(req.body);
@@ -1443,7 +1442,7 @@ app.post('/get-user-school-name', (req, res) => {
   }
 
   const query = `
-    SELECT s.school_name
+    SELECT IFNULL(s.school_name, '학교없음') AS school_name
     FROM Users u
     LEFT JOIN School s ON u.school_id = s.school_id
     WHERE u.user_id = ?;
@@ -1457,13 +1456,14 @@ app.post('/get-user-school-name', (req, res) => {
 
     console.log('Query results:', results);
 
-    if (results.length > 0 && results[0].school_name) {
+    if (results.length > 0) {
       res.status(200).json({ school_name: results[0].school_name });
     } else {
-      res.status(404).json({ message: 'School name not found for the user' });
+      res.status(200).json({ school_name: '학교없음' }); // 조회 결과가 없는 경우
     }
   });
 });
+
 
 // /get-user-nickname 엔드포인트 정의
 app.post('/get-user-nickname', (req, res) => {
