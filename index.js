@@ -457,19 +457,26 @@ app.get('/search-schools', (req, res) => {
   });
 });
 
+// 🟢 **회원가입 API**
 app.post('/signup', (req, res) => {
   const { email, password, nickname, school_name } = req.body;
 
+  // 필수 입력값 확인
   if (!email || !password || !nickname || !school_name) {
-    return res.status(400).json({ message: 'Email, password, nickname, and school_name are required' });
+    return res.status(400).json({ message: '이메일, 비밀번호, 닉네임, 학교는 필수입니다.' });
   }
 
-  // 비밀번호 검증 (최소 8자, 숫자+영문 포함)
+  // ✅ **이메일 형식 검증**
+  if (!validator.isEmail(email)) {
+    return res.status(400).json({ message: '올바른 이메일 형식을 입력하세요.' });
+  }
+
+  // ✅ **비밀번호 검증 (최소 8자, 숫자 + 영문 포함)**
   if (password.length < 8 || !/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
     return res.status(400).json({ message: '비밀번호는 최소 8자 이상이며, 숫자와 영문자를 포함해야 합니다.' });
   }
 
-  // 닉네임 검증 (공백 제거 후 검사)
+  // ✅ **닉네임 검증 (공백 제거 후 검사)**
   const trimmedNickname = nickname.trim();
   if (!isValidNickname(trimmedNickname)) {
     return res.status(400).json({ message: '닉네임은 한글 2~8자, 영문/숫자/특수문자(-,_) 2~14자 사용 가능하며 공백은 사용 불가능합니다.' });
@@ -479,73 +486,75 @@ app.post('/signup', (req, res) => {
     return res.status(400).json({ message: '닉네임에 비속어는 사용하실 수 없습니다.' });
   }
 
-  // 학교 이름 공백 제거
+  // ✅ **학교 이름 공백 제거**
   const trimmedSchoolName = school_name.trim();
 
-  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-    if (err) {
-      return res.status(500).json({ message: 'Error hashing password' });
-    }
+  bcrypt.hash(password, 10, (err, hashedPassword) => {
+    if (err) return res.status(500).json({ message: '비밀번호 암호화 중 오류 발생' });
 
-    // 트랜잭션 시작
     db.beginTransaction((err) => {
-      if (err) return res.status(500).json({ message: 'Transaction start error' });
+      if (err) return res.status(500).json({ message: '트랜잭션 오류' });
 
+      // 1️⃣ 이메일 중복 체크
       db.query('SELECT email FROM Users WHERE email = ?', [email], (err, result) => {
         if (err) {
           db.rollback();
-          return res.status(500).json({ message: 'Error checking email' });
+          return res.status(500).json({ message: '이메일 확인 오류' });
         }
         if (result.length > 0) {
           db.rollback();
-          return res.status(400).json({ message: '존재하는 아이디입니다.' });
+          return res.status(400).json({ message: '이미 사용 중인 이메일입니다.' });
         }
 
+        // 2️⃣ 닉네임 중복 체크
         db.query('SELECT nickname FROM Users WHERE nickname = ?', [trimmedNickname], (err, result) => {
           if (err) {
             db.rollback();
-            return res.status(500).json({ message: 'Error checking nickname' });
+            return res.status(500).json({ message: '닉네임 확인 오류' });
           }
           if (result.length > 0) {
             db.rollback();
-            return res.status(400).json({ message: '존재하는 닉네임입니다.' });
+            return res.status(400).json({ message: '이미 사용 중인 닉네임입니다.' });
           }
 
+          // 3️⃣ 학교 존재 여부 확인
           db.query('SELECT school_id FROM School WHERE school_name = ?', [trimmedSchoolName], (err, result) => {
             if (err) {
               db.rollback();
-              return res.status(500).json({ message: 'Error checking existing school' });
+              return res.status(500).json({ message: '학교 확인 오류' });
             }
 
             if (result.length === 0) {
               db.rollback();
-              return res.status(404).json({ message: 'School does not exist' });
+              return res.status(404).json({ message: '해당 학교가 존재하지 않습니다.' });
             }
 
             const school_id = result[0].school_id;
 
+            // 4️⃣ 회원 정보 저장
             const query = `INSERT INTO Users (email, password, nickname, school_name, account_status, school_id) VALUES (?, ?, ?, ?, 'offline', ?)`;
             db.query(query, [email, hashedPassword, trimmedNickname, trimmedSchoolName, school_id], (err, result) => {
               if (err) {
                 db.rollback();
-                return res.status(500).json({ message: 'Error creating user' });
+                return res.status(500).json({ message: '회원가입 오류' });
               }
 
               const userId = result.insertId;
 
+              // 5️⃣ 공부 시간 기록 테이블 초기화
               db.query(`INSERT INTO StudyTimeRecords (user_id) VALUES (?)`, [userId], (err) => {
                 if (err) {
-                  db.query(`DELETE FROM Users WHERE user_id = ?`, [userId], () => { // 실패 시 사용자 삭제
+                  db.query(`DELETE FROM Users WHERE user_id = ?`, [userId], () => { 
                     db.rollback();
-                    return res.status(500).json({ message: 'Error initializing StudyTimeRecords' });
+                    return res.status(500).json({ message: 'StudyTimeRecords 초기화 오류' });
                   });
                 } else {
                   db.commit((err) => {
                     if (err) {
                       db.rollback();
-                      return res.status(500).json({ message: 'Transaction commit error' });
+                      return res.status(500).json({ message: '트랜잭션 커밋 오류' });
                     }
-                    res.status(201).json({ message: 'User registered successfully' });
+                    res.status(201).json({ message: '회원가입 성공' });
                   });
                 }
               });
