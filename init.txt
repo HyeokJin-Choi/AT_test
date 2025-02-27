@@ -36,3 +36,6 @@ npm install morgan
 npm install pidusage
 cd AT_test
 node calculateCosts.js
+---------------------------------------------------------------------
+<이메일 인증을 받기위한 라이브러리 validator 설치>
+npm install validator
