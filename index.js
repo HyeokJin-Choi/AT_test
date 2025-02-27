@@ -7,6 +7,7 @@ const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const cron = require('node-cron');
 const bcrypt = require('bcrypt');
+const validator = require('validator');
 const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다.
 
 const app = express();
