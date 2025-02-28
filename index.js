@@ -162,11 +162,14 @@ app.post('/request-reset-password', (req, res) => {
 
         // 5) 이메일 전송
         const mailOptions = {
-          from: 'alltimeforyourstudy@gmail.com',
-          to: email,
-          subject: '[올타] 새 비밀번호 안내',
-          text: `새로운 비밀번호는 "${newPlainPassword}" 입니다. \n로그인 후 비밀번호를 꼭 변경해주세요.`,
-        };
+            from: 'alltimeforyourstudy@gmail.com',
+            to: email,
+            subject: '[올타] 새 비밀번호 안내',
+            html: `
+              <p>새로운 비밀번호는 <b style="color: red;">"${newPlainPassword}"</b> 입니다.</p>
+              <p><b>로그인 후 비밀번호를 꼭 변경해주세요.</b></p>
+            `,
+          };
 
         transporter.sendMail(mailOptions, (mailErr, info) => {
           if (mailErr) {
