@@ -9,6 +9,7 @@ const cron = require('node-cron');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
 const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다.
+const nodemailer = require('nodemailer');
 
 const app = express();
 const port = 15023;
@@ -100,6 +101,84 @@ function isValidNickname(nickname) {
   // 한글 또는 영문 규칙 중 하나를 만족해야 함
   return noSpaces && (koreanRegex.test(nickname) || englishRegex.test(nickname));
 }
+
+function generateRandomPassword(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    // chars에서 랜덤 인덱스 뽑아서 하나씩 붙이기
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'alltimeforyourstudy@gmail.com',
+    pass: 'rbks svsv svrc eiku', 
+  },
+});
+
+// 비밀번호 초기화
+app.post('/request-reset-password', (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: '이메일을 입력해주세요.' });
+  }
+
+  // 1) 해당 이메일이 있는지 DB 조회
+  db.query('SELECT user_id FROM Users WHERE email = ?', [email], (err, results) => {
+    if (err) {
+      console.error('DB query error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: '가입된 이메일이 없습니다.' });
+    }
+
+    const userId = results[0].user_id;
+    console.log(userId);
+    // 2) 새 비밀번호 생성
+    const newPlainPassword = generateRandomPassword(saltRounds);
+
+    // 3) 새 비밀번호 해시 (bcrypt hash도 콜백)
+    bcrypt.hash(newPlainPassword, saltRounds, (hashErr, hashedPassword) => {
+      if (hashErr) {
+        console.error('bcrypt hash error:', hashErr);
+        return res.status(500).json({ error: '암호화 오류' });
+      }
+
+      // 4) DB에 비밀번호 업데이트
+      db.query('UPDATE Users SET password = ? WHERE user_id = ?', [hashedPassword, userId], (updateErr, updateResults) => {
+        if (updateErr) {
+          console.error('DB update error:', updateErr);
+          return res.status(500).json({ error: 'DB update failed' });
+        }
+
+        // 5) 이메일 전송
+        const mailOptions = {
+          from: 'alltimeforyourstudy@gmail.com',
+          to: email,
+          subject: '[올타] 새 비밀번호 안내',
+          text: `안녕하세요! 새 비밀번호는 "${newPlainPassword}" 입니다. 로그인 후 비밀번호를 꼭 변경해주세요.`,
+        };
+
+        transporter.sendMail(mailOptions, (mailErr, info) => {
+          if (mailErr) {
+            console.error('메일 전송 실패:', mailErr);
+            return res.status(500).json({ error: '메일 전송 실패' });
+          }
+
+          // 모든 과정이 완료되면 응답
+          return res.status(200).json({ message: '새 비밀번호를 이메일로 전송했습니다.' });
+        });
+      });
+    });
+  });
+});
 
 
 // MySQL 연결
