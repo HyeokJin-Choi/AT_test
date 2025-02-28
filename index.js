@@ -37,6 +37,8 @@ const logStream = fs.createWriteStream(path.join(__dirname, 'network.log'), { fl
 morgan.token('req-size', (req) => req.headers['content-length'] || 0);
 morgan.token('res-size', (req, res) => res.getHeader('content-length') || 0);
 
+app.use(express.json()); // nodemailer
+
 app.use(
   morgan(':method :url :status :req-size bytes :res-size bytes', { stream: logStream })
 );
