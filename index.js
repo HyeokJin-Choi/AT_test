@@ -1434,7 +1434,7 @@ app.post('/get-user-medals', (req, res) => {
 
 // 사용자 ID에 해당하는 메달 목록을 가져오는 API
 app.post('/get-school-medals', (req, res) => {
-  const { schoolId } = req.body;
+  let { schoolId } = req.body;
 
   // schoolId를 int로 강제 변환
   schoolId = parseInt(schoolId, 10);
