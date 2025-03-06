@@ -1436,6 +1436,9 @@ app.post('/get-user-medals', (req, res) => {
 app.post('/get-school-medals', (req, res) => {
   const { schoolId } = req.body;
 
+  // schoolId를 int로 강제 변환
+  schoolId = parseInt(schoolId, 10);
+
   // 입력 데이터 검증
   if (!schoolId || typeof schoolId !== 'number' || schoolId <= 0) {
     return res.status(400).json({ error: '유효한 학교 ID가 필요합니다.' });
