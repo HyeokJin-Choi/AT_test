@@ -1454,8 +1454,8 @@ app.post('/get-school-medals', (req, res) => {
                 GROUP BY school_id, get_date
                 ORDER BY medal_id ASC
                 `;
-
-  db.query(query, [schoolId], (err, results) => {
+  // 2025-03-06 mysql 패킷 순서 해결
+  pool.db.query(query, [schoolId], (err, results) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: '데이터베이스 오류가 발생했습니다.' });
