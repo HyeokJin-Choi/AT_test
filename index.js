@@ -1436,6 +1436,11 @@ app.post('/get-user-medals', (req, res) => {
 app.post('/get-school-medals', (req, res) => {
   const { schoolId } = req.body;
 
+  // 입력 데이터 검증
+  if (!schoolId || typeof schoolId !== 'number' || schoolId <= 0) {
+    return res.status(400).json({ error: '유효한 학교 ID가 필요합니다.' });
+  }
+
   // userId에 해당하는 메달 목록 가져오기
   const query = `
                 SELECT
