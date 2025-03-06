@@ -1434,15 +1434,7 @@ app.post('/get-user-medals', (req, res) => {
 
 // 사용자 ID에 해당하는 메달 목록을 가져오는 API
 app.post('/get-school-medals', (req, res) => {
-  let { schoolId } = req.body;
-
-  // schoolId를 int로 강제 변환
-  schoolId = parseInt(schoolId, 10);
-
-  // 입력 데이터 검증
-  if (!schoolId || typeof schoolId !== 'number' || schoolId <= 0) {
-    return res.status(400).json({ error: '유효한 학교 ID가 필요합니다.' });
-  }
+  const { schoolId } = req.body;
 
   // userId에 해당하는 메달 목록 가져오기
   const query = `
