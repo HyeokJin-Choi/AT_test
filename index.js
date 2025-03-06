@@ -1440,9 +1440,9 @@ app.post('/get-school-medals', (req, res) => {
   const query = `
                 SELECT
                     school_id,
-                    MIN(medal_id) AS medal_id,  -- 각 get_date별로 가장 작은 medal_id를 가져옵니다.
-                    MIN(ranking) AS ranking,  -- 첫 번째 값을 가져옵니다. (기본적으로 MIN을 사용)
-                    MIN(battle_inf) AS battle_inf,  -- 첫 번째 값을 가져옵니다.
+                    MIN(medal_id) AS medal_id,  
+                    MIN(ranking) AS ranking,  
+                    MIN(battle_inf) AS battle_inf, 
                     get_date
                 FROM Medal
                 WHERE school_id = ?
