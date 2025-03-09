@@ -1291,7 +1291,7 @@ app.post('/getPurchasedProfileIcons', (req, res) => {
 
   // "프로필" 카테고리에 해당하는 구매 아이템 가져오기
   const query = `
-    SELECT i.item_id, i.category, s.item_name
+    SELECT i.item_id, i.category, s.item_usName
     FROM Inventory i
     JOIN Store s ON i.item_id = s.item_id
     WHERE i.user_id = ? AND i.category = '프로필'
