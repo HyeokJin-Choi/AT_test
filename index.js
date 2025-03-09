@@ -1021,10 +1021,13 @@ app.post('/school-contributions', (req, res) => {
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
       WHERE s.record_id = (
-        SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
-      ) AND u.school_id = ?
-      ORDER BY s.monthly_time DESC;
+        SELECT MAX(record_id) 
+        FROM StudyTimeRecords 
+        WHERE user_id = u.user_id AND school_id = ?
+      )
+      ORDER BY s.total_time DESC;
     `;
+    
 
     db.query(schoolStatsQuery, [school_id], (statsError, statsResults) => {
       if (statsError) {
@@ -1069,7 +1072,6 @@ app.post('/school-contributions', (req, res) => {
     });
   });
 });
-
 
 app.post('/selected-school-contributions', (req, res) => {
   const { schoolName } = req.body;
