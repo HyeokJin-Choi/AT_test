@@ -1725,7 +1725,7 @@ app.post('/getUserItems', (req, res) => {
   }
 
   let query = `
-    SELECT i.inventory_id, s.item_name, i.category, i.acquired_at, i.is_placed, s.item_width, s.item_height
+    SELECT i.inventory_id, s.item_name, s.item_usName, i.category, i.acquired_at, i.is_placed, s.item_width, s.item_height
     FROM Inventory i
     JOIN Store s ON i.item_id = s.item_id
     WHERE i.user_id = ?`;
