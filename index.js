@@ -1744,6 +1744,7 @@ app.post('/getUserItems', (req, res) => {
     const items = results.map(item => ({
       inventory_id: item.inventory_id,
       item_name: item.item_name,
+      item_usName: item.item_usName,
       category: item.category,
       acquired_at: item.acquired_at,
       is_placed: item.is_placed,
