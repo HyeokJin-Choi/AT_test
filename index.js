@@ -1013,8 +1013,10 @@ app.post('/school-contributions', (req, res) => {
       FROM Users u
       JOIN StudyTimeRecords s ON u.user_id = s.user_id
       WHERE s.record_id = (
-        SELECT MAX(record_id) FROM StudyTimeRecords WHERE user_id = u.user_id AND school_id = u.school_id
-      ) AND u.school_id = ?
+        SELECT MAX(record_id) 
+        FROM StudyTimeRecords 
+        WHERE user_id = u.user_id AND school_id = ?
+      )
       ORDER BY s.total_time DESC;
     ` : `
       SELECT u.nickname, s.monthly_time AS total_time
