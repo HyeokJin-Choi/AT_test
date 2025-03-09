@@ -1764,7 +1764,7 @@ app.post('/getItemsByCategory', (req, res) => {
     return res.status(400).json({ error: '유효한 카테고리 값이 필요합니다.' });
   }
 
-  const query = `SELECT item_id, item_name, description, price FROM Store WHERE category = ?`;
+  const query = `SELECT item_id, item_name, item_usName, description, price FROM Store WHERE category = ?`;
 
   db.query(query, [category], (err, results) => {
     if (err) {
