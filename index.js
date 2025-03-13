@@ -229,7 +229,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // 월간 초기화 및 메달 수여 작업 (매월 1일 0시 실행)
-cron.schedule('* * * * *', async () => {
+cron.schedule('0 0 1 * *', async () => {
     try {
         // 현재 날짜에서 현재 달 계산
         const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
@@ -404,14 +404,21 @@ cron.schedule('0 0 * * *', async () => {
         const timeDiff = endDate.getTime() - today.getTime();
         const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-        // 남은 일수가 7일, 3일, 1일일 때 알림 발송
+        // 7일, 3일, 1일 남았을 때 알림 발송
         if ([7, 3, 1].includes(daysLeft)) {
             const allUsers = await queryAsync('SELECT user_id FROM Users');
+
+            // 1일 남았을 때 메시지 변경
+            const message = daysLeft === 1
+                ? "대회 종료까지 1일 남았습니다. 자정 전까지 타이머 리셋 버튼을 누르셔야 시간이 누적됩니다."
+                : `대회 종료까지 ${daysLeft}일 남았습니다.`;
+
             await Promise.all(allUsers.map(user =>
                 queryAsync(`
-                    CALL CreateNotification(?, ?, '대회 종료까지 ${daysLeft}일 남았습니다.', 'system')
-                `, [user.user_id, `${daysLeft}일 남음`])
+                    CALL CreateNotification(?, ?, ?, 'system')
+                `, [user.user_id, `${daysLeft}일 남음`, message])
             ));
+
             console.log(`${daysLeft}일 남음 알림 발송 완료`);
         }
 
@@ -419,6 +426,7 @@ cron.schedule('0 0 * * *', async () => {
         console.error('대회 종료 알림 발송 오류:', error);
     }
 });
+
 
 // 현재 달 계산 함수 (기존 유지)
 function getCurrentMonth() {
