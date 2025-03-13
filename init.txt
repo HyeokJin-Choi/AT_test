@@ -18,7 +18,7 @@ Enter Psswd: checkjin_2023874
 mysql> use checkjin_2023874
 ---------------------------------------------------------------------
 <서버의 자동 재시작을 위한 방법>
-npm install pm2
+npm install pm2 (sudo npm install -g pm2)
 ls
 cd AT_test
 npx pm2 start index.js --name at (프로세스 관리 도구인 PM2를 사용하여 서버가 종료되더라도 자동으로 재시작되게 설정, at는 내가 설정하는 name) 
