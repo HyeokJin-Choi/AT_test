@@ -1,6 +1,8 @@
 //npm install node-cron
 //npm install brcypt
 //npm install connect-redis redis express-session
+//npm install express
+//npm install body-parser
 
 const express = require('express');
 const mysql = require('mysql');
