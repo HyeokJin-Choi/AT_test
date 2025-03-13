@@ -142,7 +142,7 @@ app.post('/request-reset-password', (req, res) => {
     }
 
     const userId = results[0].user_id;
-    console.log(userId);
+    // console.log(userId);
     // 2) 새 비밀번호 생성
     const newPlainPassword = generateRandomPassword(saltRounds);
 
@@ -522,12 +522,12 @@ app.get('/search-schools', (req, res) => {
 
   // 검색어 검증
   if (!query || query.length < 2) {
-    console.log("Query parameter missing or too short."); // 디버깅 메시지
+    // console.log("Query parameter missing or too short."); // 디버깅 메시지
     return res.status(400).json({ error: '검색어는 최소 2자 이상이어야 합니다.' });
   }
 
   if (query.length > 50) {
-    console.log("Query parameter too long."); // 디버깅 메시지
+    // console.log("Query parameter too long."); // 디버깅 메시지
     return res.status(400).json({ error: '검색어가 너무 깁니다. (최대 50자)' });
   }
 
