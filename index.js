@@ -1956,38 +1956,38 @@ app.post('/complete-item-position', async (req, res) => {
   }
 });
 
-app.post('/complete-item-position', async (req, res) => {
-  const { user_id } = req.body;
+// app.post('/complete-item-position', async (req, res) => {
+//   const { user_id } = req.body;
 
-  // 입력 데이터 검증
-  if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
-    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
-  }
+//   // 입력 데이터 검증
+//   if (!user_id || typeof user_id !== 'number' || user_id <= 0) {
+//     return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+//   }
 
-  try {
-    const result = await db.query(
-      `UPDATE Inventory
-      SET is_placed = CASE
-          WHEN is_placed = 3 THEN 0
-          WHEN is_placed = 2 THEN 1
-          ELSE is_placed
-      END
-      WHERE user_id = ? AND is_placed IN (2, 3)
-      `,
-      [user_id]
-    );
+//   try {
+//     const result = await db.query(
+//       `UPDATE Inventory
+//       SET is_placed = CASE
+//           WHEN is_placed = 3 THEN 0
+//           WHEN is_placed = 2 THEN 1
+//           ELSE is_placed
+//       END
+//       WHERE user_id = ? AND is_placed IN (2, 3)
+//       `,
+//       [user_id]
+//     );
 
-    if (result.affectedRows > 0) {
-      console.log(`Complete Item successfully - user_id: ${user_id}`);
-      return res.status(200).json({ message: '아이템 상태가 성공적으로 업데이트되었습니다.' });
-    } else {
-      return res.status(404).json({ message: '업데이트할 아이템이 없습니다.' });
-    }
-  } catch (err) {
-    console.error('Cannot Complete item:', err);
-    res.status(500).json({ error: 'Failed to complete item' }); // 오류 응답
-  }
-});
+//     if (result.affectedRows > 0) {
+//       console.log(`Complete Item successfully - user_id: ${user_id}`);
+//       return res.status(200).json({ message: '아이템 상태가 성공적으로 업데이트되었습니다.' });
+//     } else {
+//       return res.status(404).json({ message: '업데이트할 아이템이 없습니다.' });
+//     }
+//   } catch (err) {
+//     console.error('Cannot Complete item:', err);
+//     res.status(500).json({ error: 'Failed to complete item' }); // 오류 응답
+//   }
+// });
 
 app.post('/cancel-item-position', async (req, res) => {
   const { user_id } = req.body;
