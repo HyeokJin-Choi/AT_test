@@ -392,44 +392,44 @@ function queryAsync(query, params = []) {
 
 
 
-// 대회 종료일을 기준으로 7일, 3일, 1일 남았을 때 알림 발송
-cron.schedule('* * * * *', async () => {
+// 대회 종료일을 매달 마지막 날로 설정하고, 오늘 날짜를 변경하면서 1일 남았을 때 알림 발송 테스트
+cron.schedule('0 0 * * *', async () => {
     try {
-        // 대회 종료일 계산 (예: endDate가 대회 종료일이라고 가정)
+        // 현재 달 계산 (기존 유지)
         const { month, year } = getCurrentMonth();
-        const endDate = new Date(2024, 2, 20); // 대회 종료일 (매달 마지막 날)
-        endDate.setHours(0, 0, 0, 0);
+
+        // 대회 종료일: 매달 마지막 날로 설정
+        const endDate = new Date(year, month, 0); // 매달 마지막 날
+
+        // 오늘 날짜를 자동으로 설정 (현재 날짜 사용)
+        const today = new Date(); // 오늘 날짜 자동 설정
 
         // 대회 종료일까지 남은 일수 계산
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         const timeDiff = endDate.getTime() - today.getTime();
         const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        console.log(`현재 날짜: ${today.toISOString()}, 종료 날짜: ${endDate.toISOString()}, 남은 일수: ${daysLeft}`);
 
         // 7일, 3일, 1일 남았을 때 알림 발송
-        if ([7, 3, 1].includes(daysLeft)) {
-            const allUsers = await queryAsync('SELECT user_id FROM Users');
+                if ([7, 3, 1].includes(daysLeft)) {
+                    const allUsers = await queryAsync('SELECT user_id FROM Users');
 
-            // 1일 남았을 때 메시지 변경
-            const message = daysLeft === 1
-                ? "대회 종료까지 1일 남았습니다. 자정 전까지 타이머 리셋 버튼을 누르셔야 시간이 누적됩니다."
-                : `대회 종료까지 ${daysLeft}일 남았습니다.`;
+                    // 1일 남았을 때 메시지 변경
+                    const message = daysLeft === 1
+                        ? "대회 종료까지 1일 남았습니다. 자정 전까지 타이머 리셋 버튼을 누르셔야 시간이 누적됩니다."
+                        : `대회 종료까지 ${daysLeft}일 남았습니다.`;
 
-            await Promise.all(allUsers.map(user =>
-                queryAsync(`
-                    CALL CreateNotification(?, ?, ?, 'system')
-                `, [user.user_id, `${daysLeft}일 남음`, message])
-            ));
+                    await Promise.all(allUsers.map(user =>
+                        queryAsync(`
+                            CALL CreateNotification(?, ?, ?, 'system')
+                        `, [user.user_id, `${daysLeft}일 남음`, message])
+                    ));
 
-            console.log(`${daysLeft}일 남음 알림 발송 완료`);
-        }
+                    console.log(`${daysLeft}일 남음 알림 발송 완료`);
+                }
 
-    } catch (error) {
-        console.error('대회 종료 알림 발송 오류:', error);
-    }
-});
-
+            } catch (error) {
+                console.error('대회 종료 알림 발송 오류:', error);
+            }
+        });
 
 // 현재 달 계산 함수 (기존 유지)
 function getCurrentMonth() {
