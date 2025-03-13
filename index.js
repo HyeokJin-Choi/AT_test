@@ -12,7 +12,7 @@ const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다
 const nodemailer = require('nodemailer');
 
 const app = express();
-const port = 15023;
+const port = 8080; // 학교서버 15023
 
 // 서버의 이용료 측정---------------------
 // const morgan = require('morgan');
@@ -76,7 +76,7 @@ const port = 15023;
 // MySQL 연결 설정
 const db = mysql.createConnection({
   host: '0.0.0.0',
-  user: 'checkjin_2023874', // MySQL 사용자명
+  user: 'root', // MySQL 사용자명
   password: 'checkjin_2023874', // MySQL 비밀번호
   database: 'checkjin_2023874', // 사용할 데이터베이스
   multipleStatements: true // 여기에 추가
