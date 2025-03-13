@@ -398,11 +398,14 @@ cron.schedule('* * * * *', async () => {
         // 대회 종료일 계산 (예: endDate가 대회 종료일이라고 가정)
         const { month, year } = getCurrentMonth();
         const endDate = new Date(2024, 2, 20); // 대회 종료일 (매달 마지막 날)
+        endDate.setHours(0, 0, 0, 0);
 
         // 대회 종료일까지 남은 일수 계산
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const timeDiff = endDate.getTime() - today.getTime();
         const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        console.log(`현재 날짜: ${today.toISOString()}, 종료 날짜: ${endDate.toISOString()}, 남은 일수: ${daysLeft}`);
 
         // 7일, 3일, 1일 남았을 때 알림 발송
         if ([7, 3, 1].includes(daysLeft)) {
