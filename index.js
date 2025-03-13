@@ -393,11 +393,11 @@ function queryAsync(query, params = []) {
 
 
 // 대회 종료일을 기준으로 7일, 3일, 1일 남았을 때 알림 발송
-cron.schedule('0 0 * * *', async () => {
+cron.schedule('* * * * *', async () => {
     try {
         // 대회 종료일 계산 (예: endDate가 대회 종료일이라고 가정)
         const { month, year } = getCurrentMonth();
-        const endDate = new Date(year, month, 0); // 대회 종료일 (매달 마지막 날)
+        const endDate = new Date(2024, 2, 20); // 대회 종료일 (매달 마지막 날)
 
         // 대회 종료일까지 남은 일수 계산
         const today = new Date();
