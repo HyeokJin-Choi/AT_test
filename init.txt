@@ -44,8 +44,11 @@ npm install validator
 npm install nodemailer
 ---------------------------------------------------------------------
 <index.js를 구동시키기 위한 라이브러리들>
-//npm install node-cron
-//npm install brcypt
-//npm install connect-redis redis express-session
-//npm install express
-//npm install body-parser
+npm install node-cron
+npm install bcrypt
+npm install connect-redis redis express-session
+npm install express
+npm install body-parser
+npm install mysql
+npm install path
+npm install redis
