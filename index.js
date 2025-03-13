@@ -229,7 +229,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // 월간 초기화 및 메달 수여 작업 (매월 1일 0시 실행)
-cron.schedule('0 0 1 * *', async () => {
+cron.schedule('* * * * *', async () => {
     try {
         // 현재 날짜에서 현재 달 계산
         const { month, year } = getCurrentMonth(); // 현재 달 메달 수여
