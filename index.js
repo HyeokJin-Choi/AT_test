@@ -15,62 +15,62 @@ const app = express();
 const port = 15023;
 
 // 서버의 이용료 측정---------------------
-const morgan = require('morgan');
-const fs = require('fs');
-const path = require('path');
-const pidusage = require('pidusage');
+// const morgan = require('morgan');
+// const fs = require('fs');
+// const path = require('path');
+// const pidusage = require('pidusage');
 
 // CPU 및 메모리 사용량 모니터링
-setInterval(async () => {
-  try {
-    const stats = await pidusage(process.pid);
-    console.log(`CPU 사용량: ${stats.cpu.toFixed(2)}%`);
-    console.log(`메모리 사용량: ${(stats.memory / 1024 / 1024).toFixed(2)} MB`);
-  } catch (err) {
-    console.error('리소스 사용량 측정 오류:', err);
-  }
-}, 5000); // 5초 간격으로 측정
+// setInterval(async () => {
+//   try {
+//     const stats = await pidusage(process.pid);
+//     console.log(`CPU 사용량: ${stats.cpu.toFixed(2)}%`);
+//     console.log(`메모리 사용량: ${(stats.memory / 1024 / 1024).toFixed(2)} MB`);
+//   } catch (err) {
+//     console.error('리소스 사용량 측정 오류:', err);
+//   }
+// }, 5000); // 5초 간격으로 측정
 
-// 네트워크 로그 파일 생성
-const logStream = fs.createWriteStream(path.join(__dirname, 'network.log'), { flags: 'a' });
+// // 네트워크 로그 파일 생성
+// const logStream = fs.createWriteStream(path.join(__dirname, 'network.log'), { flags: 'a' });
 
-morgan.token('req-size', (req) => req.headers['content-length'] || 0);
-morgan.token('res-size', (req, res) => res.getHeader('content-length') || 0);
+// morgan.token('req-size', (req) => req.headers['content-length'] || 0);
+// morgan.token('res-size', (req, res) => res.getHeader('content-length') || 0);
 
-app.use(express.json()); // nodemailer
+// app.use(express.json()); // nodemailer
 
-app.use(
-  morgan(':method :url :status :req-size bytes :res-size bytes', { stream: logStream })
-);
+// app.use(
+//   morgan(':method :url :status :req-size bytes :res-size bytes', { stream: logStream })
+// );
 
-// 요청당 비용 계산 미들웨어
-const cpuCostPerPercent = 0.00001; // CPU 사용량 1%당 비용 ($)
-const networkCostPerMB = 0.01; // 1MB당 네트워크 비용 ($)
+// // 요청당 비용 계산 미들웨어
+// const cpuCostPerPercent = 0.00001; // CPU 사용량 1%당 비용 ($)
+// const networkCostPerMB = 0.01; // 1MB당 네트워크 비용 ($)
 
-app.use(async (req, res, next) => {
-  const start = process.hrtime();
+// app.use(async (req, res, next) => {
+//   const start = process.hrtime();
 
-  res.on('finish', async () => {
-    const elapsedTime = process.hrtime(start);
-    const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
+//   res.on('finish', async () => {
+//     const elapsedTime = process.hrtime(start);
+//     const elapsedMs = elapsedTime[0] * 1000 + elapsedTime[1] / 1e6;
 
-    const reqSize = parseInt(req.headers['content-length'] || '0', 10) / 1024 / 1024; // MB
-    const resSize = parseInt(res.getHeader('content-length') || '0', 10) / 1024 / 1024; // MB
+//     const reqSize = parseInt(req.headers['content-length'] || '0', 10) / 1024 / 1024; // MB
+//     const resSize = parseInt(res.getHeader('content-length') || '0', 10) / 1024 / 1024; // MB
 
-    try {
-      const stats = await pidusage(process.pid);
-      const cpuCost = stats.cpu * cpuCostPerPercent;
-      const networkCost = (reqSize + resSize) * networkCostPerMB;
-      const totalCost = cpuCost + networkCost;
+//     try {
+//       const stats = await pidusage(process.pid);
+//       const cpuCost = stats.cpu * cpuCostPerPercent;
+//       const networkCost = (reqSize + resSize) * networkCostPerMB;
+//       const totalCost = cpuCost + networkCost;
 
-      console.log(`요청당 비용: $${totalCost.toFixed(6)} (CPU: $${cpuCost.toFixed(6)}, Network: $${networkCost.toFixed(6)})`);
-    } catch (err) {
-      console.error('요청당 비용 계산 오류:', err);
-    }
-  });
+//       console.log(`요청당 비용: $${totalCost.toFixed(6)} (CPU: $${cpuCost.toFixed(6)}, Network: $${networkCost.toFixed(6)})`);
+//     } catch (err) {
+//       console.error('요청당 비용 계산 오류:', err);
+//     }
+//   });
 
-  next();
-});
+//   next();
+// });
 //------------------------------------
 
 // MySQL 연결 설정
@@ -82,8 +82,8 @@ const db = mysql.createConnection({
   multipleStatements: true // 여기에 추가
 });
 
-// const fs = require('fs');
-// const path = require('path');
+const fs = require('fs');
+const path = require('path');
 
 // 비속어 리스트 로드
 const badWords = JSON.parse(
