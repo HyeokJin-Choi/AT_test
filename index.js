@@ -2361,7 +2361,7 @@ app.get('/friends/:userId', async (req, res) => {
 app.post('/get-notifications', async (req, res) => {
     const { userId } = req.body;
 
-    console.log('Received request for notifications - userId:', userId);
+    // console.log('Received request for notifications - userId:', userId);
 
     // 입력 데이터 검증
     if (!userId || typeof userId !== 'number' || userId <= 0) {
