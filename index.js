@@ -546,7 +546,7 @@ app.get('/search-schools', (req, res) => {
     }
 
     // 결과를 서버 콘솔에 출력 (디버깅용)
-    console.log('Search results:', results.length > 0 ? results : "No results found.");
+    // console.log('Search results:', results.length > 0 ? results : "No results found.");
 
     // 결과 반환
     res.json(results);
@@ -707,18 +707,18 @@ app.post('/login', async (req, res) => {
               // Redis 데이터 저장 시
               const status = 'loggedIn';
               const result = await redisClient.set(userId, status, { EX: 3600 });
-              console.log(`Redis SET 결과: ${result}`);
+              // console.log(`Redis SET 결과: ${result}`);
               if (result !== 'OK') {
                 console.error('Redis SET 실패:', userId);
               }
-              console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
+              // console.log(`Redis에 저장됨: key=${userId}, value=${status}`);
 
               // 데이터가 제대로 저장되었는지 바로 확인
               const redisValue = await redisClient.get(userId);
-              console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
+              // console.log(`Redis에서 조회: key=${userId}, value=${redisValue}`);
 
-              console.log('Redis SET 성공');
-              console.log('로그인 성공:', userId);
+              // console.log('Redis SET 성공');
+              // console.log('로그인 성공:', userId);
             } catch (err) {
               console.error('Redis 연결 실패:', err);
             }
@@ -730,7 +730,7 @@ app.post('/login', async (req, res) => {
               message: '로그인 성공',
             });
           } else {
-            console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
+            // console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
             return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
           }
         });
@@ -780,13 +780,13 @@ app.post('/login', async (req, res) => {
             message: '로그인 성공',
           });
         } else {
-          console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
+          // console.log(`로그인 실패: 잘못된 비밀번호 ${email}`);
           return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
         }
       }
 
     } else {
-      console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
+      // console.log(`로그인 실패: 존재하지 않는 이메일 ${email}`);
       return res.status(401).json({ message: '잘못된 이메일 또는 비밀번호' });
     }
   });
@@ -820,10 +820,10 @@ app.post('/logout', async (req, res) => {
     try {
       const result = await redisClient.del(userId.toString());
       if (result === 1) {
-        console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
+        // console.log(`Redis에서 로그아웃 처리 완료: key=${userId}`);
         return res.status(200).json({ message: '로그아웃 성공' });
       } else {
-        console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
+        // console.log(`Redis에서 키를 찾을 수 없음: key=${userId}`);
         return res.status(404).json({ message: '사용자가 로그인되어 있지 않습니다.' });
       }
     } catch (redisError) {
@@ -942,8 +942,8 @@ app.get('/school-rankings', (req, res) => {
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
 
-      console.log('전국 대회');
-      console.log(results);
+      // console.log('전국 대회');
+      // console.log(results);
       return res.json(results); // 월별 총 시간 기준으로 정렬된 지역별 1, 2, 3등 반환
     });
   }
@@ -959,8 +959,8 @@ app.get('/school-rankings', (req, res) => {
         console.error(err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-      console.log('랭킹');
-      console.log(results);
+      // console.log('랭킹');
+      // console.log(results);
       return res.json(results); // 총 시간 기준으로 학교 데이터 반환
     });
   }
@@ -1009,7 +1009,7 @@ app.post('/school-contributions', (req, res) => {
       return res.status(404).json({ message: '현재 속한 학교가 없습니다.' });
     }
 
-    console.log('학교 이름:', school_name, '사용자 닉네임:', userNickname);
+    // console.log('학교 이름:', school_name, '사용자 닉네임:', userNickname);
 
     // 학교의 total_time 또는 monthly_total_time에 따른 쿼리
     const schoolStatsQuery = isTotalTime ? `
@@ -1212,7 +1212,7 @@ app.post('/selected-school-competition', (req, res) => {
 // 한재 시작
 app.post('/get-user-id', async (req, res) => {
   const { userEmail } = req.body;
-  console.log(`Received request for user email: ${userEmail}`);
+  // console.log(`Received request for user email: ${userEmail}`);
 
   // 입력 데이터 검증
   if (!userEmail || typeof userEmail !== 'string' || userEmail.trim() === '') {
@@ -1231,7 +1231,7 @@ app.post('/get-user-id', async (req, res) => {
 // 사용자 정보 가져오기
 app.post('/get-user-info', (req, res) => {
   const { userId } = req.body;
-  console.log('Received userId:', userId);
+  // console.log('Received userId:', userId);
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -1250,7 +1250,7 @@ app.post('/get-user-info', (req, res) => {
           console.error('Error fetching user info:', err);
           return res.status(500).json({ error: 'Failed to fetch user info' });
       }
-      console.log('Query result:', results); // 디버깅 로그
+      // console.log('Query result:', results); // 디버깅 로그
       if (results.length === 0) {
           return res.status(404).json({ error: 'User not found' });
       } else {
@@ -1439,8 +1439,8 @@ app.post('/get-user-medals', (req, res) => {
       return res.status(500).json({ error: 'Database error' });
     }
     // 결과 확인을 위한 로그 추가
-        console.log('User ID:', userId);  // 요청한 userId 출력
-        console.log('Fetched Medals:', results);  // 가져온 메달 목록 출력
+        // console.log('User ID:', userId);  // 요청한 userId 출력
+        // console.log('Fetched Medals:', results);  // 가져온 메달 목록 출력
 
     // 메달 목록 반환
     res.json(results);
@@ -1542,8 +1542,8 @@ app.post('/get-medal-info', (req, res) => {
 
 app.post('/get-user-school-name', (req, res) => {
   const { userId } = req.body;
-  console.log(req.body);
-  console.log('Received userId:', userId);
+  // console.log(req.body);
+  // console.log('Received userId:', userId);
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -1563,7 +1563,7 @@ app.post('/get-user-school-name', (req, res) => {
       return res.status(500).json({ message: 'Error retrieving school name' });
     }
 
-    console.log('Query results:', results);
+    // console.log('Query results:', results);
 
     if (results.length > 0) {
       res.status(200).json({ school_name: results[0].school_name });
@@ -1602,7 +1602,7 @@ app.post('/get-user-nickname', (req, res) => {
 //fullSchool_screen.dart에 사용할 post문
 app.post('/get-school-info', (req, res) => {
   const { userId } = req.body;
-  console.log(req.body);
+  // console.log(req.body);
   
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -2010,7 +2010,7 @@ app.post('/cancel-item-position', async (req, res) => {
     );
 
     if (result.affectedRows > 0) {
-      console.log(`Item cancel successfully - user_id: ${user_id}`);
+      // console.log(`Item cancel successfully - user_id: ${user_id}`);
       return res.status(200).json({ message: '아이템 배치가 취소되었습니다.' });
     } else {
       return res.status(404).json({ message: '취소할 아이템이 없습니다.' });
@@ -2027,7 +2027,7 @@ app.get('/search-user', (req, res) => {
   const { nickname } = req.query;
   const userId = req.userId; // 요청 보낸 사용자의 userId (예: 토큰에서 추출)
 
-  console.log('Received search request:', { userId, nickname });
+  // console.log('Received search request:', { userId, nickname });
 
   // 입력 데이터 검증
   if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 14) {
@@ -2059,7 +2059,7 @@ app.get('/search-user', (req, res) => {
 app.post('/send-friend-request', async (req, res) => {
   const { userId, friendNickname } = req.body;
 
-  console.log('Received friend request:', { userId, friendNickname });
+  // console.log('Received friend request:', { userId, friendNickname });
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -2128,7 +2128,7 @@ app.post('/send-friend-request', async (req, res) => {
 app.post('/remove-friend', async (req, res) => {
   const { userId, friendId } = req.body;
 
-  console.log('Received remove friend request:', { userId, friendId });
+  // console.log('Received remove friend request:', { userId, friendId });
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -2166,7 +2166,7 @@ app.post('/remove-friend', async (req, res) => {
     );
 
     if (deleteResult.affectedRows > 0) {
-      console.log(`Friend removed successfully - userId: ${userId}, friendId: ${friendId}`);
+      // console.log(`Friend removed successfully - userId: ${userId}, friendId: ${friendId}`);
       return res.status(200).json({ message: '친구가 성공적으로 삭제되었습니다.' });
     } else {
       return res.status(500).json({ message: '친구 삭제 중 오류가 발생했습니다.' });
@@ -2183,7 +2183,7 @@ app.post('/remove-friend', async (req, res) => {
 app.get('/friend-requests/:userId', async (req, res) => {
   const userId = Number(req.params.userId);
 
-  console.log('Received request for friend requests - userId:', userId);
+  // console.log('Received request for friend requests - userId:', userId);
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -2218,7 +2218,7 @@ app.get('/friend-requests/:userId', async (req, res) => {
 app.post('/accept-friend-request', async (req, res) => {
   const { friendshipId } = req.body;
 
-  console.log('Received accept friend request:', { friendshipId });
+  // console.log('Received accept friend request:', { friendshipId });
 
   // 입력 데이터 검증
   if (!friendshipId || typeof friendshipId !== 'number' || friendshipId <= 0) {
@@ -2285,7 +2285,7 @@ app.post('/accept-friend-request', async (req, res) => {
 app.post('/reject-friend-request', async (req, res) => {
   const { friendshipId } = req.body;
 
-  console.log('Received reject friend request:', { friendshipId });
+  // console.log('Received reject friend request:', { friendshipId });
 
   // 입력 데이터 검증
   if (!friendshipId || typeof friendshipId !== 'number' || friendshipId <= 0) {
@@ -2316,7 +2316,7 @@ app.post('/reject-friend-request', async (req, res) => {
 app.get('/friends/:userId', async (req, res) => {
   const userId = Number(req.params.userId);
 
-  console.log('Received request for friends list - userId:', userId);
+  // console.log('Received request for friends list - userId:', userId);
 
   // 입력 데이터 검증
   if (!userId || typeof userId !== 'number' || userId <= 0) {
@@ -2460,7 +2460,7 @@ app.post('/get-daily-study-times', async (req, res) => {
           return res.status(404).json({ error: '일별 공부 기록이 없습니다.' });
       }
 
-      console.log("Search daily study times results:", results);
+      // console.log("Search daily study times results:", results);
       return res.json(results);
   } catch (err) {
       console.error("Error fetching daily study times:", err);
