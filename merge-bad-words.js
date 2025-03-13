@@ -25,6 +25,6 @@ badWordFiles.forEach((file) => {
 });
 
 // JSON 파일로 저장
-const outputFilePath = path.join(__dirname, 'invalid-words.json');
+const outputFilePath = path.join(__dirname, '..', 'invalid-words.json');
 fs.writeFileSync(outputFilePath, JSON.stringify(mergedBadWords, null, 2), 'utf-8');
 console.log(`Merged bad words saved to ${outputFilePath}`);
