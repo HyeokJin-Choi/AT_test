@@ -14,7 +14,7 @@ const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다
 const nodemailer = require('nodemailer');
 
 const app = express();
-const port = 8080; // 학교서버 15023
+const port = 15023; // 학교서버 15023
 
 // 서버의 이용료 측정---------------------
 // const morgan = require('morgan');
