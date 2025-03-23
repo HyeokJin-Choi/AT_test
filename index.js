@@ -78,7 +78,7 @@ const port = 15023; // 학교서버 15023
 // MySQL 연결 설정
 const db = mysql.createConnection({
   host: '0.0.0.0',
-  user: 'root', // MySQL 사용자명
+  user: 'checkjin_2023874', // MySQL 사용자명
   password: 'checkjin_2023874', // MySQL 비밀번호
   database: 'checkjin_2023874', // 사용할 데이터베이스
   multipleStatements: true // 여기에 추가
