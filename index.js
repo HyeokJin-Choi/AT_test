@@ -1,9 +1,3 @@
-//npm install node-cron
-//npm install brcypt
-//npm install connect-redis redis express-session
-//npm install express
-//npm install body-parser
-
 const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
@@ -15,6 +9,13 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const port = 15023; // 학교서버 15023
+
+const fs = require('fs');
+const path = require('path');
+
+// 미들웨어 설정
+app.use(bodyParser.json());
+app.use(express.json());
 
 // 서버의 이용료 측정---------------------
 // const morgan = require('morgan');
@@ -84,9 +85,6 @@ const db = mysql.createConnection({
   multipleStatements: true // 여기에 추가
 });
 
-const fs = require('fs');
-const path = require('path');
-
 // 비속어 리스트 로드
 const badWords = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'invalid-words.json'))
@@ -123,6 +121,44 @@ const transporter = nodemailer.createTransport({
     pass: 'rbks svsv svrc eiku', 
   },
 });
+
+
+// MySQL 연결
+db.connect((err) => {
+    if (err) throw err;
+    console.log('Connected to MySQL database');
+});
+
+// 로그인 세션
+const redis = require('redis');
+// Redis 연결 설정
+const redisClient = redis.createClient({
+  url: `redis://default:DaEPvJcFiv7V75JSHaNaptAj1zaD16P7@redis-12810.c258.us-east-1-4.ec2.redns.redis-cloud.com:12810/0`,
+});
+
+redisClient.on('connect', () => {
+  console.log('Redis 연결 성공');
+});
+redisClient.on('ready', () => {
+  console.log('Redis 준비 완료');
+});
+redisClient.on('end', () => {
+  console.log('Redis 연결 종료');
+});
+redisClient.on('error', (err) => {
+  console.error('Redis 에러 발생:', err);
+});
+
+(async () => {
+  try {
+    await redisClient.connect();
+    console.log('Redis 연결 시도 중...');
+    await redisClient.flushAll();
+    console.log('Redis 초기화 완료');
+  } catch (err) {
+    console.error('Redis 연결 실패:', err);
+  }
+})();
 
 // 비밀번호 초기화
 app.post('/request-reset-password', (req, res) => {
@@ -187,49 +223,6 @@ app.post('/request-reset-password', (req, res) => {
   });
 });
 
-
-// MySQL 연결
-db.connect((err) => {
-    if (err) throw err;
-    console.log('Connected to MySQL database');
-});
-
-// 로그인 세션
-const redis = require('redis');
-// Redis 연결 설정
-const redisClient = redis.createClient({
-  url: `redis://default:DaEPvJcFiv7V75JSHaNaptAj1zaD16P7@redis-12810.c258.us-east-1-4.ec2.redns.redis-cloud.com:12810/0`,
-});
-
-redisClient.on('connect', () => {
-  console.log('Redis 연결 성공');
-});
-redisClient.on('ready', () => {
-  console.log('Redis 준비 완료');
-});
-redisClient.on('end', () => {
-  console.log('Redis 연결 종료');
-});
-redisClient.on('error', (err) => {
-  console.error('Redis 에러 발생:', err);
-});
-
-(async () => {
-  try {
-    await redisClient.connect();
-    console.log('Redis 연결 시도 중...');
-    await redisClient.flushAll();
-    console.log('Redis 초기화 완료');
-  } catch (err) {
-    console.error('Redis 연결 실패:', err);
-  }
-})();
-
-
-// 미들웨어 설정
-app.use(bodyParser.json());
-app.use(express.json());
-
 // 월간 초기화 및 메달 수여 작업 (매월 1일 0시 실행)
 cron.schedule('0 0 1 * *', async () => {
     try {
@@ -244,7 +237,7 @@ cron.schedule('0 0 1 * *', async () => {
         // 지난달 계산
         const { lastMonth, lastYear } = getLastMonth(); // 지난달 계산
         const lastMonthDateString = `${lastYear}년 ${lastMonth}월`;
-        console.log(`lastMonthDateString 값: ${lastMonthDateString}`);
+        // console.log(`lastMonthDateString 값: ${lastMonthDateString}`);
 
         // 대회 시작일(start_date)과 종료일(end_date) 계산 (지난달)
         const lastStartDate = new Date(lastYear, lastMonth - 1, 1);  // 지난달의 1일
@@ -329,7 +322,7 @@ cron.schedule('0 0 1 * *', async () => {
         // monthly_time 초기화 (사용자별)
         await queryAsync('UPDATE StudyTimeRecords SET monthly_time = 0');
 
-        console.log(`${lastMonthDateString} 메달 수여 완료 및 월간 초기화`);
+        // console.log(`${lastMonthDateString} 메달 수여 완료 및 월간 초기화`);
 
         // 대회 종료 알림
         const allUsers = await queryAsync('SELECT user_id FROM Users');
@@ -353,7 +346,7 @@ cron.schedule('0 0 1 * *', async () => {
                 SET start_date = ?, end_date = ?
         `, [startDate, endDate]);
 
-        console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
+        // console.log(`대회 시작일과 종료일이 업데이트되었습니다: ${startDate} ~ ${endDate}`);
 
     } catch (error) {
         console.error('월간 초기화 오류:', error);
@@ -425,7 +418,7 @@ cron.schedule('0 0 * * *', async () => {
                         `, [user.user_id, `${daysLeft}일 남음`, message])
                     ));
 
-                    console.log(`${daysLeft}일 남음 알림 발송 완료`);
+                    // console.log(`${daysLeft}일 남음 알림 발송 완료`);
                 }
 
             } catch (error) {
@@ -794,6 +787,68 @@ app.post('/login', async (req, res) => {
   });
 });
 
+const util = require('util');
+
+app.post('/delete-user', async (req, res) => {
+  const userId = Number(req.body.userId);
+
+  // ✅ 입력 데이터 검증
+  if (!userId || isNaN(userId) || userId <= 0) {
+    return res.status(400).json({ message: '유효한 사용자 ID가 필요합니다.' });
+  }
+
+  try {
+    // ✅ 비동기 변환
+    const query = util.promisify(db.query).bind(db);
+    const beginTransaction = util.promisify(db.beginTransaction).bind(db);
+    const commit = util.promisify(db.commit).bind(db);
+    const rollback = util.promisify(db.rollback).bind(db);
+
+    // ✅ 현재 닉네임 및 이메일 조회
+    const selectQuery = 'SELECT nickname, email FROM Users WHERE user_id = ?';
+    const results = await query(selectQuery, [userId]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: '해당 사용자를 찾을 수 없습니다.' });
+    }
+
+    const user = results[0];
+    const newNickname = `*${user.nickname}`;
+    
+    // ✅ 이메일 중복 방지를 위해 `*` 추가 방식 개선
+    let newEmail = `*${user.email}`;
+
+    // 이메일이 DB에 이미 존재하는지 확인
+    let checkQuery = 'SELECT COUNT(*) as count FROM Users WHERE email = ?';
+    let emailExists = await query(checkQuery, [newEmail]);
+
+    // 중복된 이메일이 존재하면 `**email@naver.com`, `***email@naver.com`으로 변경
+    while (emailExists[0].count > 0) {
+      newEmail = `*${newEmail}`;
+      emailExists = await query(checkQuery, [newEmail]);
+    }
+
+    // ✅ 트랜잭션 시작
+    await beginTransaction();
+
+    // ✅ 닉네임 및 이메일 업데이트하여 계정 삭제 처리
+    const updateUserQuery = 'UPDATE Users SET nickname = ?, email = ?, account_status = "dormant" WHERE user_id = ?';
+    await query(updateUserQuery, [newNickname, newEmail, userId]);
+
+    // ✅ 친구 관계 삭제
+    const deleteFriendsQuery = 'DELETE FROM Friends WHERE user_id = ? OR friend_id = ?';
+    await query(deleteFriendsQuery, [userId, userId]);
+
+    // ✅ 트랜잭션 커밋
+    await commit();
+
+    return res.status(200).json({ message: '계정 삭제 처리 완료', nickname: newNickname, email: newEmail });
+  } catch (error) {
+    await rollback();
+    return res.status(500).json({ message: '서버 오류: 계정 삭제 처리 실패' });
+  }
+});
+
 
 // 로그아웃 API
 app.post('/logout', async (req, res) => {
@@ -835,6 +890,45 @@ app.post('/logout', async (req, res) => {
 
   } catch (dbError) {
     return res.status(500).json({ message: '서버 오류: 로그아웃 처리 실패' });
+  }
+});
+
+// 회원 탈퇴 비밀번호 확인 추가
+app.post('/valid-password', async (req, res) => {
+  const { userId, currentPassword } = req.body;
+
+  // **1️⃣ 입력값 검증 (userId, currentPassword)**
+  if (!userId || !currentPassword) {
+      return res.status(400).json({ message: 'userId, currentPassword는 필수 입력값입니다.' });
+  }
+
+
+  try {
+      // **4️⃣ 사용자 존재 여부 및 비밀번호 조회**
+      const sql = 'SELECT password FROM Users WHERE user_id = ?';
+      const results = await queryAsync(sql, [userId]);
+
+      if (results.length === 0) {
+          return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+      }
+
+      const user = results[0];
+
+      // **5️⃣ 비밀번호 검증 (해싱된 경우와 평문 비밀번호 처리)**
+      const isHashed = user.password.startsWith('$2b$');
+
+      if (isHashed) {
+          // bcrypt 해싱된 비밀번호 비교
+          const isMatch = await bcrypt.compare(currentPassword, user.password);
+          if (!isMatch) {
+              return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+          }
+      }
+
+      return res.status(200).json({ message: '비밀번호가 성공적으로 확인되었습니다.' });
+  } catch (err) {
+      // console.error('비밀번호 유효성 검사 중 오류 발생:', err);
+      return res.status(500).json({ message: '비밀번호 유효성 검사 중 오류가 발생했습니다.' });
   }
 });
 
@@ -911,8 +1005,8 @@ app.get('/school-rankings', (req, res) => {
         console.error(err);
         return res.status(500).json({ error: '데이터베이스 쿼리 오류' });
       }
-      console.log('지역 대회');
-      console.log(results);
+      // console.log('지역 대회');
+      // console.log(results);
       return res.json(results);
     });
   }
@@ -976,7 +1070,6 @@ app.get('/school-rankings', (req, res) => {
 app.post('/school-contributions', (req, res) => {
   const { userEmail, isTotalTime } = req.body;
 
-  // 입력 데이터 검증
   if (!userEmail || typeof userEmail !== 'string' || userEmail.trim() === '') {
     return res.status(400).json({ message: '유효한 이메일을 입력하세요.' });
   }
@@ -987,7 +1080,6 @@ app.post('/school-contributions', (req, res) => {
 
   const trimmedEmail = userEmail.trim();
 
-  // 사용자 이메일을 기반으로 school_id와 nickname 가져오기
   const schoolQuery = `
     SELECT u.school_id, u.nickname, s.school_name
     FROM Users u
@@ -1011,16 +1103,12 @@ app.post('/school-contributions', (req, res) => {
       return res.status(404).json({ message: '현재 속한 학교가 없습니다.' });
     }
 
-    // console.log('학교 이름:', school_name, '사용자 닉네임:', userNickname);
-
-    // 학교의 total_time 또는 monthly_total_time에 따른 쿼리
     const schoolStatsQuery = isTotalTime ? `
       SELECT total_ranking, total_time FROM School WHERE school_id = ?;
     ` : `
       SELECT monthly_ranking, monthly_total_time FROM School WHERE school_id = ?;
     `;
 
-    // 기여도 데이터도 total_time 또는 monthly_total_time에 따라 구분
     const contributionsQuery = isTotalTime ? `
       SELECT u.nickname, s.total_time
       FROM Users u
@@ -1042,7 +1130,6 @@ app.post('/school-contributions', (req, res) => {
       )
       ORDER BY s.total_time DESC;
     `;
-    
 
     db.query(schoolStatsQuery, [school_id], (statsError, statsResults) => {
       if (statsError) {
@@ -1076,17 +1163,40 @@ app.post('/school-contributions', (req, res) => {
           });
         }
 
+        // (졸업생) 데이터를 합산할 변수
+        let graduateTotalTime = 0;
+        let contributions = [];
+
+        contribResults.forEach(row => {
+          let nickname = row.nickname;
+          let time = row.total_time;
+
+          if (nickname.startsWith('*')) {
+            graduateTotalTime += time; // (졸업생) 그룹의 총 시간 합산
+          } else {
+            contributions.push({ nickname, total_time: time });
+          }
+        });
+
+        // (졸업생) 데이터 추가
+        if (graduateTotalTime > 0) {
+          contributions.push({ nickname: '(졸업생)', total_time: graduateTotalTime });
+        }
+
+        // console.log("최종 데이터:", contributions); // 로그 추가하여 확인
+
         return res.status(200).json({
           schoolName: school_name,
           ranking: ranking,
           total_time: total_time,
           userNickname: userNickname,
-          contributions: contribResults,
+          contributions
         });
       });
     });
   });
 });
+
 
 app.post('/selected-school-contributions', (req, res) => {
   const { schoolName } = req.body;
@@ -1138,21 +1248,40 @@ app.post('/selected-school-contributions', (req, res) => {
         });
       }
 
+      // (졸업생) 그룹을 위한 total_time 합산 변수
+      let graduateTotalTime = 0;
+      let contributions = [];
+
+      results.forEach(row => {
+        let nickname = row.nickname;
+        let time = row.total_time;
+
+        if (nickname.startsWith('*')) {
+          graduateTotalTime += time; // (졸업생) 그룹의 총 시간 합산
+        } else {
+          contributions.push({ nickname, total_time: time });
+        }
+      });
+
+      // (졸업생) 데이터를 리스트에 추가
+      if (graduateTotalTime > 0) {
+        contributions.push({ nickname: '(졸업생)', total_time: graduateTotalTime });
+      }
+
+      // console.log("최종 데이터:", contributions); // 로그 추가하여 확인
+
       return res.status(200).json({
         schoolName: trimmedSchoolName,
-        contributions: results.map(row => ({
-          nickname: row.nickname,
-          total_time: row.total_time
-        }))
+        contributions
       });
     });
   });
 });
 
+
 app.post('/selected-school-competition', (req, res) => {
   const { schoolName } = req.body;
 
-  // 입력 데이터 검증
   if (!schoolName || typeof schoolName !== 'string' || schoolName.trim() === '') {
     return res.status(400).json({ error: '유효한 학교 이름이 필요합니다.' });
   }
@@ -1199,12 +1328,29 @@ app.post('/selected-school-competition', (req, res) => {
         });
       }
 
+      // (졸업생) 데이터를 합산할 변수
+      let graduateTotalTime = 0;
+      let contributions = [];
+
+      results.forEach(row => {
+        let nickname = row.nickname;
+        let time = row.monthly_time;
+
+        if (nickname.startsWith('*')) {
+          graduateTotalTime += time; // (졸업생) 총 기여 시간 합산
+        } else {
+          contributions.push({ nickname, monthly_time: time });
+        }
+      });
+
+      // (졸업생) 데이터 추가
+      if (graduateTotalTime > 0) {
+        contributions.push({ nickname: '(졸업생)', monthly_time: graduateTotalTime });
+      }
+
       return res.status(200).json({
         schoolName: trimmedSchoolName,
-        contributions: results.map(row => ({
-          nickname: row.nickname,
-          monthly_time: row.monthly_time
-        }))
+        contributions
       });
     });
   });
@@ -2589,5 +2735,5 @@ app.post('/reset-items-to-bag', async (req, res) => {
 
 // 서버 시작
 app.listen(port, () => {
-    console.log(`Server running at http://116.124.191.174:${port}`);
+    console.log(`Server running at http://3.37.43.93:${port}`);
 })
