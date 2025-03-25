@@ -8,7 +8,7 @@ const saltRounds = 10; // Salt rounds 값은 보안성에 영향을 미칩니다
 const nodemailer = require('nodemailer');
 
 const app = express();
-const port = 15023; // 학교서버 15023
+const port = 8080; // 학교서버 15023
 
 const fs = require('fs');
 const path = require('path');
@@ -79,7 +79,7 @@ app.use(express.json());
 // MySQL 연결 설정
 const db = mysql.createConnection({
   host: '0.0.0.0',
-  user: 'checkjin_2023874', // MySQL 사용자명
+  user: 'root', // MySQL 사용자명
   password: 'checkjin_2023874', // MySQL 비밀번호
   database: 'checkjin_2023874', // 사용할 데이터베이스
   multipleStatements: true // 여기에 추가
@@ -1763,6 +1763,7 @@ app.post('/get-school-info', (req, res) => {
       School.school_name,
       School.school_level,
       School.total_time,
+      School.total_points,
       School.school_local,
       COUNT(Users.user_id) AS students
     FROM Users
@@ -1775,6 +1776,7 @@ app.post('/get-school-info', (req, res) => {
       School.school_name,
       School.school_level,
       School.total_time,
+      School.total_points,
       School.school_local;
   `;
 
