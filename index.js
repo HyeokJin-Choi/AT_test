@@ -2735,6 +2735,78 @@ app.post('/reset-items-to-bag', async (req, res) => {
 });
 // 재희 끝
 
+// 전체 공지사항 조회 (visible=true만 노출)
+app.get('/announcements', (req, res) => {
+  const sql = `
+    SELECT announcement_id, title, content, created_at, is_important
+    FROM Announcements
+    WHERE is_visible = TRUE
+    ORDER BY created_at DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('공지사항 조회 오류:', err);
+      return res.status(500).json({ error: '공지사항을 불러오는 중 오류 발생' });
+    }
+
+    if (!Array.isArray(results)) {
+      return res.status(500).json({ error: '잘못된 응답 형식' });
+    }
+
+    res.json(results);
+  });
+});
+
+
+app.post('/read-announcement', (req, res) => {
+  const { userId, announcementId } = req.body;
+
+  // 유효성 검사
+  if (!userId || !announcementId || isNaN(userId) || isNaN(announcementId)) {
+    return res.status(400).json({ error: '잘못된 요청입니다.' });
+  }
+
+  // 중복 INSERT 방지 (이미 읽음 처리된 공지는 무시됨)
+  const sql = `
+    INSERT IGNORE INTO Announcement_Reads (user_id, announcement_id)
+    VALUES (?, ?)
+  `;
+
+  db.query(sql, [userId, announcementId], (err, result) => {
+    if (err) {
+      console.error('읽음 처리 오류:', err);
+      return res.status(500).json({ error: '읽음 처리 중 오류 발생' });
+    }
+
+    res.json({ success: true, message: '읽음 처리 완료' });
+  });
+});
+
+app.get('/read-announcements/:userId', (req, res) => {
+  const userId = parseInt(req.params.userId);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: '잘못된 사용자 ID' });
+  }
+
+  const sql = `
+    SELECT announcement_id
+    FROM Announcement_Reads
+    WHERE user_id = ?
+  `;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('읽은 공지사항 목록 조회 오류:', err);
+      return res.status(500).json({ error: '읽음 정보 조회 중 오류 발생' });
+    }
+
+    res.json(results.map(row => row.announcement_id));
+  });
+});
+
+
 // 서버 시작
 app.listen(port, () => {
     console.log(`Server running at http://3.37.43.93:${port}`);
