@@ -2806,6 +2806,37 @@ app.get('/read-announcements/:userId', (req, res) => {
   });
 });
 
+app.get('/unread-announcements/:userId', (req, res) => {
+  const userId = parseInt(req.params.userId);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: '잘못된 사용자 ID' });
+  }
+
+  const sql = `
+    SELECT COUNT(*) AS unreadCount
+    FROM Announcements A
+    WHERE A.is_visible = TRUE
+      AND NOT EXISTS (
+        SELECT 1
+        FROM Announcement_Reads R
+        WHERE R.announcement_id = A.announcement_id
+          AND R.user_id = ?
+      )
+  `;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('읽지 않은 공지사항 조회 오류:', err);
+      return res.status(500).json({ error: '서버 오류' });
+    }
+
+    const unreadCount = results[0]?.unreadCount || 0;
+    res.json({ hasUnread: unreadCount > 0 });
+  });
+});
+
+
 
 // 서버 시작
 app.listen(port, () => {
