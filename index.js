@@ -632,6 +632,19 @@ app.post('/signup', (req, res) => {
 
               const userId = result.insertId;
 
+              const markAllAsReadQuery = `
+                INSERT INTO Announcement_Reads (user_id, announcement_id)
+                SELECT ?, announcement_id
+                FROM Announcements
+                WHERE is_visible = TRUE
+              `;
+              
+              db.query(markAllAsReadQuery, [userId], (err) => {
+                if (err) {
+                  db.rollback();
+                  return res.status(500).json({ message: '공지 읽음 초기화 오류' });
+                }
+
               // 5️⃣ 공부 시간 기록 테이블 초기화
               db.query(`INSERT INTO StudyTimeRecords (user_id) VALUES (?)`, [userId], (err) => {
                 if (err) {
