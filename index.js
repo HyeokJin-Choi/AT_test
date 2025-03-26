@@ -644,6 +644,7 @@ app.post('/signup', (req, res) => {
                   db.rollback();
                   return res.status(500).json({ message: '공지 읽음 초기화 오류' });
                 }
+              }
 
               // 5️⃣ 공부 시간 기록 테이블 초기화
               db.query(`INSERT INTO StudyTimeRecords (user_id) VALUES (?)`, [userId], (err) => {
