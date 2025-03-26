@@ -2816,6 +2816,7 @@ app.get('/unread-announcements/:userId', (req, res) => {
   const sql = `
     SELECT COUNT(*) AS unreadCount
     FROM Announcements A
+    JOIN Users U ON U.user_id = ?
     WHERE A.is_visible = TRUE
       AND A.created_at >= U.created_at
       AND NOT EXISTS (
@@ -2826,7 +2827,7 @@ app.get('/unread-announcements/:userId', (req, res) => {
       )
   `;
 
-  db.query(sql, [userId], (err, results) => {
+  db.query(sql, [userId, userId], (err, results) => {
     if (err) {
       console.error('읽지 않은 공지사항 조회 오류:', err);
       return res.status(500).json({ error: '서버 오류' });
@@ -2836,6 +2837,7 @@ app.get('/unread-announcements/:userId', (req, res) => {
     res.json({ hasUnread: unreadCount > 0 });
   });
 });
+
 
 
 
