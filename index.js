@@ -2817,6 +2817,7 @@ app.get('/unread-announcements/:userId', (req, res) => {
     SELECT COUNT(*) AS unreadCount
     FROM Announcements A
     WHERE A.is_visible = TRUE
+      AND A.created_at >= U.created_at
       AND NOT EXISTS (
         SELECT 1
         FROM Announcement_Reads R
