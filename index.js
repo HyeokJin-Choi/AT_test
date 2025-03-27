@@ -2852,7 +2852,10 @@ app.get('/unread-announcements/:userId', (req, res) => {
   });
 });
 
-
+app.get('/status', (req, res) => {
+  // 서버가 정상이라면 200 OK 상태를 반환
+  res.status(200).json({ message: 'Server is running' });
+});
 
 
 // 서버 시작
