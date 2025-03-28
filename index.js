@@ -2860,7 +2860,7 @@ app.get('/status', (req, res) => {
 // 버전 정보 API
 app.get('/app-version', (req, res) => {
   res.json({
-    latest_version: '1.0.3+3', // 최신 버전
+    latest_version: '1.0.4+4', // 최신 버전
     force_update: true, 
   });
 });
