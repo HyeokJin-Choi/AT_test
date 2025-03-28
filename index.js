@@ -2857,6 +2857,14 @@ app.get('/status', (req, res) => {
   res.status(200).json({ message: 'Server is running' });
 });
 
+// 버전 정보 API
+app.get('/app-version', (req, res) => {
+  res.json({
+    latest_version: '1.0.1+1', // 최신 버전
+    force_update: true, 
+  });
+});
+
 
 // 서버 시작
 app.listen(port, () => {
